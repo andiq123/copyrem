@@ -1,5 +1,0 @@
-# CopyRem — Modify audio so it won't get detected. Same sound, different fingerprint.
-User-agent: *
-Allow: /
-
-Sitemap: https://copyrem.app/sitemap.xml

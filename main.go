@@ -1,25 +1,35 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"time"
 
 	"copyrem/internal/config"
 	"copyrem/internal/server"
-
-	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	gin.SetMode(gin.ReleaseMode)
-	r := gin.Default()
-
 	cfg := config.Default()
-	server.RegisterRoutes(r, cfg)
+	mux := server.NewMux(cfg, "frontend/dist")
+	handler := server.Chain(mux)
 
 	addr := defaultAddr()
+	srv := &http.Server{
+		Addr:         addr,
+		Handler:      handler,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 60 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+
 	log.Printf("CopyRem server listening on %s", addr)
-	r.Run(addr)
+	if err := srv.ListenAndServe(); err != nil {
+		fmt.Fprintf(os.Stderr, "server: %v\n", err)
+		os.Exit(1)
+	}
 }
 
 func defaultAddr() string {

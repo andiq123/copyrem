@@ -7,62 +7,40 @@ import (
 	"strings"
 
 	"copyrem/internal/config"
-
-	"github.com/gin-gonic/gin"
 )
 
 //go:embed static/build.html
 var buildHTML []byte
 
-func RegisterRoutes(r *gin.Engine, cfg config.Params) {
-	r.Use(securityMiddleware())
-	r.Use(corsMiddleware())
+func NewMux(cfg config.Params, staticDir string) *http.ServeMux {
+	mux := http.NewServeMux()
 
-	r.GET("/api/info", gin.WrapF(InfoHandler()))
-	r.POST("/convert", gin.WrapF(RateLimitConvert(ConvertHandler(cfg))))
+	mux.HandleFunc("/api/info", InfoHandler())
+	mux.HandleFunc("/convert", RateLimitConvert(ConvertHandler(cfg)))
 
-	if info, err := os.Stat("frontend/dist"); err == nil && info.IsDir() {
-		r.Static("/assets", "frontend/dist/assets")
-		r.StaticFile("/robots.txt", "frontend/dist/robots.txt")
-		r.StaticFile("/sitemap.xml", "frontend/dist/sitemap.xml")
-		r.NoRoute(func(c *gin.Context) {
-			c.File("frontend/dist/index.html")
-		})
-	} else {
-		r.NoRoute(func(c *gin.Context) {
-			c.Data(http.StatusOK, "text/html; charset=utf-8", buildHTML)
+	var staticHandler http.Handler
+	if staticDir != "" {
+		if info, err := os.Stat(staticDir); err == nil && info.IsDir() {
+			staticHandler = http.FileServer(http.Dir(staticDir))
+		}
+	}
+	if staticHandler == nil {
+		staticHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/" || r.URL.Path == "/index.html" {
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+				w.Write(buildHTML)
+				return
+			}
+			http.NotFound(w, r)
 		})
 	}
+	mux.Handle("/", staticHandler)
+
+	return mux
 }
 
-func securityMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Header("X-Content-Type-Options", "nosniff")
-		c.Header("X-Frame-Options", "DENY")
-		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
-		c.Header("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
-		c.Header("Content-Security-Policy",
-			"default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'")
-		c.Next()
-	}
-}
-
-func corsMiddleware() gin.HandlerFunc {
-	allowed := AllowedOriginsForCORS()
-	return func(c *gin.Context) {
-		origin := c.GetHeader("Origin")
-		if origin != "" && allowed[origin] {
-			c.Header("Access-Control-Allow-Origin", origin)
-			c.Header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-			c.Header("Access-Control-Allow-Headers", "Content-Type")
-			c.Header("Access-Control-Max-Age", "86400")
-		}
-		if c.Request.Method == http.MethodOptions {
-			c.AbortWithStatus(http.StatusNoContent)
-			return
-		}
-		c.Next()
-	}
+func Chain(next http.Handler) http.Handler {
+	return SecurityHeaders(CORS(next))
 }
 
 func AllowedOriginsForCORS() map[string]bool {
@@ -78,4 +56,22 @@ func AllowedOriginsForCORS() map[string]bool {
 		}
 	}
 	return origins
+}
+
+func CORS(next http.Handler) http.Handler {
+	allowed := AllowedOriginsForCORS()
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if origin != "" && allowed[origin] {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			w.Header().Set("Access-Control-Max-Age", "86400")
+		}
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }

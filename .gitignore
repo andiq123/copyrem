@@ -1,8 +1,9 @@
 tmp/
+frontend/dist/
 frontend/node_modules/
 node_modules/
+build-errors.log
 *.log
 copyrem
-copyrem-server
 *.mp3
 .DS_Store

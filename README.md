@@ -11,7 +11,7 @@ Web app that converts audio to MP3 with ffmpeg (configurable slowdown, 320 kbps,
 
 ```bash
 cd frontend && npm install && npm run build && cd ..
-go build -o copyrem ./cmd/server
+go build -o copyrem .
 ./copyrem
 ```
 

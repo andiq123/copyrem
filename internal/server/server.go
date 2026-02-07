@@ -14,9 +14,12 @@ var buildHTML []byte
 
 func NewMux(cfg config.Params, staticDir string) *http.ServeMux {
 	mux := http.NewServeMux()
+	store := NewJobStore()
 
 	mux.HandleFunc("/api/info", InfoHandler())
-	mux.HandleFunc("/convert", RateLimitConvert(ConvertHandler(cfg)))
+	mux.HandleFunc("/convert", RateLimitConvert(ConvertHandler(cfg, store)))
+	mux.HandleFunc("/convert/progress/", ProgressHandler(store))
+	mux.HandleFunc("/convert/download/", DownloadHandler(store))
 
 	var staticHandler http.Handler
 	if staticDir != "" {

@@ -7,6 +7,11 @@ import (
 	"strings"
 )
 
+var (
+	reUnsafe = regexp.MustCompile(`[^a-zA-Z0-9._\- ]`)
+	reSpaces = regexp.MustCompile(`\s+`)
+)
+
 func SecurityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -20,17 +25,13 @@ func SecurityHeaders(next http.Handler) http.Handler {
 }
 
 func safeDownloadFilename(name string) string {
-	base := filepath.Base(name)
-	base = strings.TrimSpace(base)
-	re := regexp.MustCompile(`[^a-zA-Z0-9._\- ]`)
-	base = re.ReplaceAllString(base, "")
-	re = regexp.MustCompile(`\s+`)
-	base = re.ReplaceAllString(base, " ")
+	base := reUnsafe.ReplaceAllString(strings.TrimSpace(filepath.Base(name)), "")
+	base = reSpaces.ReplaceAllString(base, " ")
 	if base == "" {
-		base = "audio"
+		return "audio"
 	}
 	if len(base) > 200 {
-		base = base[:200]
+		return base[:200]
 	}
 	return base
 }

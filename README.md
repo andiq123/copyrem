@@ -1,13 +1,18 @@
 # CopyRem
 
-Web app that converts audio to MP3 with ffmpeg (configurable slowdown, 320 kbps, 44.1 kHz).
+Modify your audio file so it won't get detected — same sound, different fingerprint.
+
+**Live:** [everyday-deeann-andi3-92f6ccf7.koyeb.app](https://everyday-deeann-andi3-92f6ccf7.koyeb.app/)
+
+Supports MP3, M4A, WAV, FLAC, AAC, OGG. Output: 320 kbps MP3.
 
 ## Requirements
 
 - **Go** 1.22+
-- **ffmpeg** — included in `bin/` (macOS) or install via your package manager.
+- **Node.js** 18+
+- **ffmpeg** — included in `bin/` (macOS) or install via your package manager
 
-## Build & run
+## Quick start
 
 ```bash
 cd frontend && npm install && npm run build && cd ..
@@ -15,10 +20,17 @@ go build -o copyrem .
 ./copyrem
 ```
 
-Open http://localhost:8080. Use `PORT=3000` to change the port.
+Open [localhost:8080](http://localhost:8080). Set `PORT` to change it.
 
-**Dev:** Run `./copyrem`, then `cd frontend && npm run dev` for Vite at http://localhost:5173.
+## Development
+
+```bash
+go build -o copyrem . && ./copyrem
+cd frontend && npm run dev
+```
+
+Backend on `:8080`, Vite on `:5173` with proxy to backend.
 
 ## Deployment
 
-Replace `https://copyrem.app` in `frontend/index.html` and `frontend/public/` with your base URL. Use HTTPS. Set `TRUST_PROXY=1` when behind a reverse proxy.
+Use HTTPS. Set `TRUST_PROXY=1` behind a reverse proxy. Update the canonical URL in `frontend/index.html` to match your domain.

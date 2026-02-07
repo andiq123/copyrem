@@ -1,31 +1,28 @@
 package server
 
 import (
-	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"copyrem/internal/config"
 	"copyrem/internal/converter"
 )
 
-func maxUploadBytes() int64 {
-	return int64(MaxUploadMB) * 1024 * 1024
-}
-
-func ConvertHandler(cfg config.Params) http.HandlerFunc {
+func ConvertHandler(cfg config.Params, store *JobStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
-		limit := maxUploadBytes()
+		limit := int64(MaxUploadMB) * 1024 * 1024
 		r.Body = http.MaxBytesReader(w, r.Body, limit)
-		if err := r.ParseMultipartForm(limit); err != nil {
+		if err := r.ParseMultipartForm(2 << 20); err != nil {
 			if err.Error() == "http: request body too large" {
 				writeError(w, http.StatusRequestEntityTooLarge, fmt.Sprintf("file too large (max %d MB)", MaxUploadMB))
 				return
@@ -54,47 +51,116 @@ func ConvertHandler(cfg config.Params) http.HandlerFunc {
 		defer inF.Close()
 
 		dir := os.TempDir()
-		prefix := "copyrem-"
-		inPath := filepath.Join(dir, prefix+randomName()+ext)
-		outPath := filepath.Join(dir, prefix+randomName()+".mp3")
+		inPath := filepath.Join(dir, "copyrem-"+randHex(8)+ext)
+		outPath := filepath.Join(dir, "copyrem-"+randHex(8)+".mp3")
 
-		defer func() {
-			_ = os.Remove(inPath)
-			_ = os.Remove(outPath)
-		}()
-
-		outFile, err := os.Create(inPath)
+		dst, err := os.Create(inPath)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to create temp file")
 			return
 		}
-		_, err = outFile.ReadFrom(inF)
-		outFile.Close()
+		_, err = dst.ReadFrom(inF)
+		dst.Close()
 		if err != nil {
+			_ = os.Remove(inPath)
 			writeError(w, http.StatusInternalServerError, "failed to save upload")
 			return
 		}
 
-		if err := converter.Convert(cfg, inPath, outPath); err != nil {
-			writeError(w, http.StatusInternalServerError, "conversion failed")
+		name := safeDownloadFilename(strings.TrimSuffix(fh.Filename, filepath.Ext(fh.Filename))) + DownloadSuffix
+		job := store.Create(inPath, outPath, name)
+
+		go func() {
+			store.SetRunning(job.ID)
+			if err := converter.ConvertWithProgress(cfg, inPath, outPath, func(pct int) {
+				store.SetPercent(job.ID, pct)
+			}); err != nil {
+				store.SetFailed(job.ID, "conversion failed")
+				return
+			}
+			store.SetDone(job.ID)
+		}()
+
+		writeJSON(w, http.StatusOK, map[string]string{"job_id": job.ID})
+	}
+}
+
+func ProgressHandler(store *JobStore) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
-		outName := safeDownloadFilename(trimExt(fh.Filename)) + DownloadSuffix
+		id := strings.TrimPrefix(r.URL.Path, "/convert/progress/")
+		if id == "" || store.Get(id) == nil {
+			writeError(w, http.StatusNotFound, "job not found")
+			return
+		}
+
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			writeError(w, http.StatusInternalServerError, "streaming not supported")
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+
+		ticker := time.NewTicker(500 * time.Millisecond)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-r.Context().Done():
+				return
+			case <-ticker.C:
+				j := store.Get(id)
+				if j == nil {
+					return
+				}
+
+				evt := map[string]any{"percent": j.Percent}
+				if j.Status == JobDone {
+					evt["done"] = true
+				}
+				if j.Status == JobFailed {
+					evt["error"] = j.Error
+				}
+
+				data, _ := json.Marshal(evt)
+				fmt.Fprintf(w, "data: %s\n\n", data)
+				flusher.Flush()
+
+				if j.Status == JobDone || j.Status == JobFailed {
+					return
+				}
+			}
+		}
+	}
+}
+
+func DownloadHandler(store *JobStore) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+
+		id := strings.TrimPrefix(r.URL.Path, "/convert/download/")
+		job := store.Get(id)
+		if job == nil {
+			writeError(w, http.StatusNotFound, "job not found")
+			return
+		}
+		if job.Status != JobDone {
+			writeError(w, http.StatusConflict, "job not ready")
+			return
+		}
+
 		w.Header().Set("Content-Type", "audio/mpeg")
-		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", outName))
-		http.ServeFile(w, r, outPath)
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", job.OriginalName))
+		http.ServeFile(w, r, job.OutPath)
 	}
-}
-
-func randomName() string {
-	b := make([]byte, 8)
-	if _, err := rand.Read(b); err != nil {
-		return "out"
-	}
-	return fmt.Sprintf("%x", b)
-}
-
-func trimExt(name string) string {
-	return strings.TrimSuffix(name, filepath.Ext(name))
 }

@@ -7,7 +7,7 @@ export default function App() {
   const {
     apiInfo, file, loading, percent, status, error,
     downloadUrl, downloadName, accept, canReset,
-    pickFile, submit, reset,
+    pickFile, submit, reset, cancel,
   } = useConverter()
 
   const onSubmit = (e) => {
@@ -35,7 +35,16 @@ export default function App() {
         </button>
       </form>
 
-      {loading && <ProgressCard percent={percent} />}
+      {loading && (
+        <>
+          <ProgressCard percent={percent} />
+          <div className="cancel-wrap">
+            <button type="button" className="btn btn-cancel" onClick={cancel}>
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
 
       {status && !loading && <StatusMessage message={status} isError={error} />}
 

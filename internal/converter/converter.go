@@ -2,6 +2,7 @@ package converter
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"math"
 	"os/exec"
@@ -12,7 +13,7 @@ import (
 	"copyrem/internal/ffmpeg"
 )
 
-func ConvertWithProgress(cfg config.Params, input, output string, onProgress func(int)) error {
+func ConvertWithProgress(ctx context.Context, cfg config.Params, input, output string, onProgress func(int)) error {
 	binary := ffmpeg.FindBinary()
 
 	var totalUs float64
@@ -27,7 +28,7 @@ func ConvertWithProgress(cfg config.Params, input, output string, onProgress fun
 		args = append([]string{"-progress", "pipe:1"}, args...)
 	}
 
-	cmd := exec.Command(binary, args...)
+	cmd := exec.CommandContext(ctx, binary, args...)
 
 	if onProgress != nil && totalUs > 0 {
 		stdout, err := cmd.StdoutPipe()
@@ -38,6 +39,7 @@ func ConvertWithProgress(cfg config.Params, input, output string, onProgress fun
 			return fmt.Errorf("ffmpeg start: %w", err)
 		}
 		scanner := bufio.NewScanner(stdout)
+		scanner.Buffer(make([]byte, 256), 256)
 		lastPct := 0
 		for scanner.Scan() {
 			if !strings.HasPrefix(scanner.Text(), "out_time_us=") {
@@ -60,6 +62,9 @@ func ConvertWithProgress(cfg config.Params, input, output string, onProgress fun
 	}
 
 	if err := cmd.Wait(); err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		return fmt.Errorf("ffmpeg: %w", err)
 	}
 	if onProgress != nil {

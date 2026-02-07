@@ -24,21 +24,22 @@ func (rl *rateLimiter) allow(key string) bool {
 	defer rl.mu.Unlock()
 	now := time.Now()
 	cutoff := now.Add(-rateLimitWindow)
-	if rl.counts == nil {
-		rl.counts = make(map[string][]time.Time)
-	}
-	var valid []time.Time
-	for _, t := range rl.counts[key] {
+
+	times := rl.counts[key]
+	n := 0
+	for _, t := range times {
 		if t.After(cutoff) {
-			valid = append(valid, t)
+			times[n] = t
+			n++
 		}
 	}
-	if len(valid) >= rateLimitBurst {
-		rl.counts[key] = valid
+	times = times[:n]
+
+	if n >= rateLimitBurst {
+		rl.counts[key] = times
 		return false
 	}
-	valid = append(valid, now)
-	rl.counts[key] = valid
+	rl.counts[key] = append(times, now)
 	return true
 }
 
@@ -48,16 +49,17 @@ func (rl *rateLimiter) cleanup() {
 		rl.mu.Lock()
 		cutoff := time.Now().Add(-rateLimitWindow)
 		for key, times := range rl.counts {
-			var valid []time.Time
+			n := 0
 			for _, t := range times {
 				if t.After(cutoff) {
-					valid = append(valid, t)
+					times[n] = t
+					n++
 				}
 			}
-			if len(valid) == 0 {
+			if n == 0 {
 				delete(rl.counts, key)
 			} else {
-				rl.counts[key] = valid
+				rl.counts[key] = times[:n]
 			}
 		}
 		rl.mu.Unlock()
@@ -67,7 +69,7 @@ func (rl *rateLimiter) cleanup() {
 var convertLimiter = newRateLimiter()
 
 func newRateLimiter() *rateLimiter {
-	rl := &rateLimiter{}
+	rl := &rateLimiter{counts: make(map[string][]time.Time)}
 	go rl.cleanup()
 	return rl
 }

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
 	"os"
@@ -11,10 +12,11 @@ import (
 type JobStatus string
 
 const (
-	JobPending JobStatus = "pending"
-	JobRunning JobStatus = "running"
-	JobDone    JobStatus = "done"
-	JobFailed  JobStatus = "failed"
+	JobPending   JobStatus = "pending"
+	JobRunning   JobStatus = "running"
+	JobDone      JobStatus = "done"
+	JobFailed    JobStatus = "failed"
+	JobCancelled JobStatus = "cancelled"
 
 	jobTTL          = 5 * time.Minute
 	jobCleanupEvery = 30 * time.Second
@@ -29,6 +31,8 @@ type Job struct {
 	OriginalName string
 	Error        string
 	CreatedAt    time.Time
+	Ctx          context.Context
+	cancel       context.CancelFunc
 }
 
 type JobStore struct {
@@ -43,6 +47,7 @@ func NewJobStore() *JobStore {
 }
 
 func (s *JobStore) Create(inPath, outPath, originalName string) *Job {
+	ctx, cancel := context.WithCancel(context.Background())
 	j := &Job{
 		ID:           randHex(8),
 		Status:       JobPending,
@@ -50,6 +55,8 @@ func (s *JobStore) Create(inPath, outPath, originalName string) *Job {
 		OutPath:      outPath,
 		OriginalName: originalName,
 		CreatedAt:    time.Now(),
+		Ctx:          ctx,
+		cancel:       cancel,
 	}
 	s.mu.Lock()
 	s.jobs[j.ID] = j
@@ -97,6 +104,22 @@ func (s *JobStore) SetFailed(id string, errMsg string) {
 	s.mu.Unlock()
 }
 
+func (s *JobStore) Cancel(id string) {
+	s.mu.Lock()
+	j := s.jobs[id]
+	if j == nil {
+		s.mu.Unlock()
+		return
+	}
+	j.cancel()
+	j.Status = JobCancelled
+	in, out := j.InPath, j.OutPath
+	delete(s.jobs, id)
+	s.mu.Unlock()
+	_ = os.Remove(in)
+	_ = os.Remove(out)
+}
+
 func (s *JobStore) cleanup() {
 	for {
 		time.Sleep(jobCleanupEvery)
@@ -104,6 +127,7 @@ func (s *JobStore) cleanup() {
 		now := time.Now()
 		for id, j := range s.jobs {
 			if now.Sub(j.CreatedAt) > jobTTL {
+				j.cancel()
 				_ = os.Remove(j.InPath)
 				_ = os.Remove(j.OutPath)
 				delete(s.jobs, id)

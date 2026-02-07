@@ -1,6 +1,9 @@
 package server
 
-import "net/http"
+import (
+	"encoding/json"
+	"net/http"
+)
 
 func InfoHandler() http.HandlerFunc {
 	type info struct {
@@ -8,12 +11,13 @@ func InfoHandler() http.HandlerFunc {
 		AllowedExtensions []string `json:"allowed_extensions"`
 		DownloadSuffix    string   `json:"download_suffix"`
 	}
-	data := info{MaxUploadMB, AllowedExtensions, DownloadSuffix}
+	body, _ := json.Marshal(info{MaxUploadMB, AllowedExtensions, DownloadSuffix})
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
-		writeJSON(w, http.StatusOK, data)
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Write(body)
 	}
 }

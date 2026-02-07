@@ -282,6 +282,25 @@ body {
   margin-top: 1.25rem;
 }
 
+.cancel-wrap {
+  margin-top: 0.75rem;
+  text-align: center;
+}
+
+.btn-cancel {
+  background: rgba(248, 113, 113, 0.08);
+  color: var(--error);
+  border: 1px solid rgba(248, 113, 113, 0.15);
+  font-weight: 500;
+  font-size: 0.8125rem;
+  padding: 0.55rem 1.5rem;
+}
+
+.btn-cancel:hover {
+  background: rgba(248, 113, 113, 0.15);
+  border-color: rgba(248, 113, 113, 0.3);
+}
+
 .reset-wrap {
   margin-top: 0.75rem;
   text-align: center;

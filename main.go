@@ -12,7 +12,10 @@ import (
 )
 
 func main() {
-	cfg := config.Default()
+	cfg, err := config.Load("settings.json")
+	if err != nil {
+		log.Printf("settings.json not found, using defaults")
+	}
 	mux := server.NewMux(cfg, "frontend/dist")
 	handler := server.Chain(mux)
 

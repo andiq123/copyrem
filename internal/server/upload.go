@@ -1,21 +1,16 @@
 package server
 
-import (
-	"strings"
-)
+import "strings"
 
 const (
-	MaxUploadMB   = 80
+	MaxUploadMB    = 80
 	DownloadSuffix = "_modified.mp3"
 )
 
 var (
-	AllowedExtensions = []string{".mp3", ".m4a", ".wav", ".flac", ".aac", ".ogg"}
+	AllowedExtensions    = []string{".mp3", ".m4a", ".wav", ".flac", ".aac", ".ogg"}
+	allowedExtensionsStr = strings.Join(AllowedExtensions, ", ")
 )
-
-func AllowedExtensionsComma() string {
-	return strings.Join(AllowedExtensions, ", ")
-}
 
 func allowedExtension(ext string) bool {
 	for _, e := range AllowedExtensions {

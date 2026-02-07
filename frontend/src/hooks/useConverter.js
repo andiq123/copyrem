@@ -16,12 +16,23 @@ export default function useConverter() {
   const [downloadUrl, setDownloadUrl] = useState(null)
   const [downloadName, setDownloadName] = useState(null)
   const esRef = useRef(null)
+  const jobIdRef = useRef(null)
 
   useEffect(() => {
     fetch('/api/info')
       .then((r) => r.ok ? r.json() : null)
       .then((data) => data && setApiInfo(data))
       .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    const onUnload = () => {
+      if (jobIdRef.current) {
+        navigator.sendBeacon(`/convert/cancel/${jobIdRef.current}`)
+      }
+    }
+    window.addEventListener('beforeunload', onUnload)
+    return () => window.removeEventListener('beforeunload', onUnload)
   }, [])
 
   const closeES = useCallback(() => {
@@ -44,6 +55,7 @@ export default function useConverter() {
 
   const fail = useCallback((msg) => {
     closeES()
+    jobIdRef.current = null
     setStatus(msg)
     setError(true)
     setLoading(false)
@@ -55,8 +67,24 @@ export default function useConverter() {
     clearState()
   }, [clearState])
 
-  const reset = useCallback(() => {
+  const cancel = useCallback(() => {
+    if (jobIdRef.current) {
+      fetch(`/convert/cancel/${jobIdRef.current}`, { method: 'POST' }).catch(() => {})
+    }
     closeES()
+    jobIdRef.current = null
+    setLoading(false)
+    setPercent(0)
+    setStatus('Conversion cancelled.')
+    setError(false)
+  }, [closeES])
+
+  const reset = useCallback(() => {
+    if (jobIdRef.current) {
+      fetch(`/convert/cancel/${jobIdRef.current}`, { method: 'POST' }).catch(() => {})
+    }
+    closeES()
+    jobIdRef.current = null
     setFile(null)
     setLoading(false)
     clearState()
@@ -79,6 +107,7 @@ export default function useConverter() {
         throw new Error(data.error || res.statusText || 'Conversion failed')
       }
       const { job_id } = await res.json()
+      jobIdRef.current = job_id
 
       const es = new EventSource(`/convert/progress/${job_id}`)
       esRef.current = es
@@ -102,6 +131,7 @@ export default function useConverter() {
             setDownloadName(match?.[1]?.trim() || `audio${apiInfo.download_suffix}`)
             setStatus('Your file is ready \u2014 same sound, different fingerprint.')
             setLoading(false)
+            jobIdRef.current = null
           } catch {
             fail('Download failed.')
           }
@@ -119,7 +149,7 @@ export default function useConverter() {
   return {
     apiInfo, file, loading, percent, status, error,
     downloadUrl, downloadName, accept,
-    pickFile, submit, reset,
+    pickFile, submit, reset, cancel,
     canReset: !!(file || status || downloadUrl),
   }
 }

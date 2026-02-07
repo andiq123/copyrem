@@ -121,7 +121,9 @@ func ProgressHandler(store *JobStore) http.HandlerFunc {
 		for {
 			select {
 			case <-r.Context().Done():
-				store.Cancel(id)
+				if j := store.Get(id); j != nil && j.Status != JobDone {
+					store.Cancel(id)
+				}
 				return
 			case <-ticker.C:
 				j := store.Get(id)

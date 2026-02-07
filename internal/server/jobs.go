@@ -15,8 +15,7 @@ const (
 	JobPending   JobStatus = "pending"
 	JobRunning   JobStatus = "running"
 	JobDone      JobStatus = "done"
-	JobFailed    JobStatus = "failed"
-	JobCancelled JobStatus = "cancelled"
+	JobFailed JobStatus = "failed"
 
 	jobTTL          = 5 * time.Minute
 	jobCleanupEvery = 30 * time.Second
@@ -112,7 +111,6 @@ func (s *JobStore) Cancel(id string) {
 		return
 	}
 	j.cancel()
-	j.Status = JobCancelled
 	in, out := j.InPath, j.OutPath
 	delete(s.jobs, id)
 	s.mu.Unlock()

@@ -53,13 +53,20 @@ export default function useConverter() {
     setDownloadName(null)
   }, [])
 
-  const fail = useCallback((msg) => {
+  const stopJob = useCallback(() => {
+    if (jobIdRef.current) {
+      fetch(`/convert/cancel/${jobIdRef.current}`, { method: 'POST' }).catch(() => {})
+    }
     closeES()
     jobIdRef.current = null
+  }, [closeES])
+
+  const fail = useCallback((msg) => {
+    stopJob()
     setStatus(msg)
     setError(true)
     setLoading(false)
-  }, [closeES])
+  }, [stopJob])
 
   const pickFile = useCallback((f) => {
     if (!f) return
@@ -68,27 +75,17 @@ export default function useConverter() {
   }, [clearState])
 
   const cancel = useCallback(() => {
-    if (jobIdRef.current) {
-      fetch(`/convert/cancel/${jobIdRef.current}`, { method: 'POST' }).catch(() => {})
-    }
-    closeES()
-    jobIdRef.current = null
+    stopJob()
     setLoading(false)
-    setPercent(0)
-    setStatus('Conversion cancelled.')
-    setError(false)
-  }, [closeES])
+    clearState()
+  }, [stopJob, clearState])
 
   const reset = useCallback(() => {
-    if (jobIdRef.current) {
-      fetch(`/convert/cancel/${jobIdRef.current}`, { method: 'POST' }).catch(() => {})
-    }
-    closeES()
-    jobIdRef.current = null
+    stopJob()
     setFile(null)
     setLoading(false)
     clearState()
-  }, [closeES, clearState])
+  }, [stopJob, clearState])
 
   const submit = useCallback(async () => {
     if (!file) return

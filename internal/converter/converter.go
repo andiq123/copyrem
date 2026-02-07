@@ -87,7 +87,12 @@ func buildArgs(cfg config.Params, input, output string) []string {
 	resample = append(resample, fmt.Sprintf("aresample=%d", sr))
 
 	delay := fmt.Sprintf("adelay=%d|%d", cfg.DelayLeftMs, cfg.DelayRightMs)
-	filter := strings.Join(append([]string{pitch, tempo}, append(resample, delay)...), ",")
+
+	parts := make([]string, 0, 2+len(resample)+1)
+	parts = append(parts, pitch, tempo)
+	parts = append(parts, resample...)
+	parts = append(parts, delay)
+	filter := strings.Join(parts, ",")
 
 	return []string{
 		"-y", "-i", input,

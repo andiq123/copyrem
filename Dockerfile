@@ -1,15 +1,19 @@
-FROM golang:1.25-alpine AS build
-RUN apk add --no-cache nodejs npm
+FROM golang:1.23-bookworm AS build
+ENV GOTOOLCHAIN=auto
+RUN apt-get update && apt-get install -y --no-install-recommends nodejs npm && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY go.mod ./
 RUN go mod download
 COPY . .
 RUN cd frontend && npm ci && npm run build && cd ..
-RUN go build -tags netgo -ldflags '-s -w' -o /app .
+RUN go build -tags netgo -ldflags '-s -w' -o /copyrem .
 
-FROM alpine:3.21
-RUN apk add --no-cache ffmpeg ca-certificates
-COPY --from=build /app /app
-COPY --from=build /src/frontend/dist /frontend/dist
+FROM python:3.11-slim
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir demucs soundfile
+WORKDIR /app
+COPY --from=build /copyrem /app/copyrem
+COPY --from=build /src/frontend/dist /app/frontend/dist
+COPY --from=build /src/settings.json /app/settings.json
 EXPOSE 8080
-CMD ["/app"]
+CMD ["/app/copyrem"]

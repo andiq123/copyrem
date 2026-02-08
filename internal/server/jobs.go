@@ -27,6 +27,7 @@ type Job struct {
 	Percent      int
 	InPath       string
 	OutPath      string
+	OutPath2     string
 	OriginalName string
 	Error        string
 	CreatedAt    time.Time
@@ -46,12 +47,21 @@ func NewJobStore() *JobStore {
 }
 
 func (s *JobStore) Create(inPath, outPath, originalName string) *Job {
+	return s.createJob(inPath, outPath, "", originalName)
+}
+
+func (s *JobStore) CreateWithTwoOutputs(inPath, outPath, outPath2, originalName string) *Job {
+	return s.createJob(inPath, outPath, outPath2, originalName)
+}
+
+func (s *JobStore) createJob(inPath, outPath, outPath2, originalName string) *Job {
 	ctx, cancel := context.WithCancel(context.Background())
 	j := &Job{
 		ID:           randHex(8),
 		Status:       JobPending,
 		InPath:       inPath,
 		OutPath:      outPath,
+		OutPath2:     outPath2,
 		OriginalName: originalName,
 		CreatedAt:    time.Now(),
 		Ctx:          ctx,
@@ -111,11 +121,14 @@ func (s *JobStore) Cancel(id string) {
 		return
 	}
 	j.cancel()
-	in, out := j.InPath, j.OutPath
+	in, out, out2 := j.InPath, j.OutPath, j.OutPath2
 	delete(s.jobs, id)
 	s.mu.Unlock()
 	_ = os.Remove(in)
 	_ = os.Remove(out)
+	if out2 != "" {
+		_ = os.Remove(out2)
+	}
 }
 
 func (s *JobStore) cleanup() {
@@ -128,6 +141,9 @@ func (s *JobStore) cleanup() {
 				j.cancel()
 				_ = os.Remove(j.InPath)
 				_ = os.Remove(j.OutPath)
+				if j.OutPath2 != "" {
+					_ = os.Remove(j.OutPath2)
+				}
 				delete(s.jobs, id)
 			}
 		}

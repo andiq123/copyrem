@@ -7,6 +7,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/convert': 'http://localhost:8080',
+      '/separate': 'http://localhost:8080',
       '/api': 'http://localhost:8080',
     },
   },

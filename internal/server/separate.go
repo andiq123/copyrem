@@ -9,11 +9,15 @@ import (
 	"strings"
 	"time"
 
-	"copyrem/internal/config"
-	"copyrem/internal/converter"
+	"copyrem/internal/separator"
 )
 
-func ConvertHandler(cfg config.Params, store *JobStore) http.HandlerFunc {
+const (
+	SeparateDownloadSuffixVocals  = "_vocals.mp3"
+	SeparateDownloadSuffixInst    = "_instrumental.mp3"
+)
+
+func SeparateHandler(store *JobStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -25,12 +29,14 @@ func ConvertHandler(cfg config.Params, store *JobStore) http.HandlerFunc {
 			return
 		}
 		dir := filepath.Dir(inPath)
-		outPath := filepath.Join(dir, randHex(8)+".mp3")
-		job := store.Create(inPath, outPath, baseName+DownloadSuffix)
+		base := strings.TrimSuffix(filepath.Base(inPath), filepath.Ext(inPath))
+		outVocals := filepath.Join(dir, base+SeparateDownloadSuffixVocals)
+		outInstrumental := filepath.Join(dir, base+SeparateDownloadSuffixInst)
+		job := store.CreateWithTwoOutputs(inPath, outVocals, outInstrumental, baseName)
 
 		go func() {
 			store.SetRunning(job.ID)
-			err := converter.ConvertWithProgress(job.Ctx, cfg, inPath, outPath, func(pct int) {
+			err := separator.SeparateWithProgress(job.Ctx, inPath, outVocals, outInstrumental, func(pct int) {
 				store.SetPercent(job.ID, pct)
 			})
 			_ = os.Remove(inPath)
@@ -38,7 +44,7 @@ func ConvertHandler(cfg config.Params, store *JobStore) http.HandlerFunc {
 				if job.Ctx.Err() == context.Canceled {
 					return
 				}
-				store.SetFailed(job.ID, "conversion failed")
+				store.SetFailed(job.ID, err.Error())
 				return
 			}
 			store.SetDone(job.ID)
@@ -50,14 +56,14 @@ func ConvertHandler(cfg config.Params, store *JobStore) http.HandlerFunc {
 	}
 }
 
-func ProgressHandler(store *JobStore) http.HandlerFunc {
+func SeparateProgressHandler(store *JobStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
-		id := strings.TrimPrefix(r.URL.Path, "/convert/progress/")
+		id := strings.TrimPrefix(r.URL.Path, "/separate/progress/")
 		if id == "" || store.Get(id) == nil {
 			writeError(w, http.StatusNotFound, "job not found")
 			return
@@ -107,14 +113,14 @@ func ProgressHandler(store *JobStore) http.HandlerFunc {
 	}
 }
 
-func CancelHandler(store *JobStore) http.HandlerFunc {
+func SeparateCancelHandler(store *JobStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
-		id := strings.TrimPrefix(r.URL.Path, "/convert/cancel/")
+		id := strings.TrimPrefix(r.URL.Path, "/separate/cancel/")
 		if id == "" || store.Get(id) == nil {
 			writeError(w, http.StatusNotFound, "job not found")
 			return
@@ -126,16 +132,22 @@ func CancelHandler(store *JobStore) http.HandlerFunc {
 	}
 }
 
-func DownloadHandler(store *JobStore) http.HandlerFunc {
+func SeparateDownloadHandler(store *JobStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
-		id := strings.TrimPrefix(r.URL.Path, "/convert/download/")
+		path := strings.TrimPrefix(r.URL.Path, "/separate/download/")
+		parts := strings.SplitN(path, "/", 2)
+		if len(parts) != 2 {
+			writeError(w, http.StatusNotFound, "job not found")
+			return
+		}
+		id, stem := parts[0], parts[1]
 		job := store.Get(id)
-		if job == nil {
+		if job == nil || job.OutPath2 == "" {
 			writeError(w, http.StatusNotFound, "job not found")
 			return
 		}
@@ -144,10 +156,21 @@ func DownloadHandler(store *JobStore) http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "audio/mpeg")
-		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", job.OriginalName))
-		http.ServeFile(w, r, job.OutPath)
+		var filePath, name string
+		switch stem {
+		case "vocals":
+			filePath = job.OutPath
+			name = job.OriginalName + SeparateDownloadSuffixVocals
+		case "instrumental":
+			filePath = job.OutPath2
+			name = job.OriginalName + SeparateDownloadSuffixInst
+		default:
+			writeError(w, http.StatusNotFound, "job not found")
+			return
+		}
 
-		store.Cancel(id)
+		w.Header().Set("Content-Type", "audio/mpeg")
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", name))
+		http.ServeFile(w, r, filePath)
 	}
 }

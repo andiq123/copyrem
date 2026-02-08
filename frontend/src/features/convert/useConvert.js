@@ -6,7 +6,7 @@ const DEFAULT_API_INFO = {
   download_suffix: '_modified.mp3',
 }
 
-export default function useConverter() {
+export default function useConvert() {
   const [apiInfo, setApiInfo] = useState(DEFAULT_API_INFO)
   const [file, setFile] = useState(null)
   const [loading, setLoading] = useState(false)

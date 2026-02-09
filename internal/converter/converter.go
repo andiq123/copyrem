@@ -8,10 +8,14 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 
 	"copyrem/internal/config"
 	"copyrem/internal/ffmpeg"
 )
+
+const progressMinStep = 2
+const progressMinInterval = 200 * time.Millisecond
 
 func ConvertWithProgress(ctx context.Context, cfg config.Params, input, output string, onProgress func(int)) error {
 	binary := ffmpeg.FindBinary()
@@ -41,6 +45,7 @@ func ConvertWithProgress(ctx context.Context, cfg config.Params, input, output s
 		scanner := bufio.NewScanner(stdout)
 		scanner.Buffer(make([]byte, 256), 256)
 		lastPct := 0
+		lastReport := time.Time{}
 		for scanner.Scan() {
 			if !strings.HasPrefix(scanner.Text(), "out_time_us=") {
 				continue
@@ -50,8 +55,13 @@ func ConvertWithProgress(ctx context.Context, cfg config.Params, input, output s
 				continue
 			}
 			pct := int(math.Min(99, (us/totalUs)*100))
-			if pct > lastPct {
+			if pct <= lastPct {
+				continue
+			}
+			now := time.Now()
+			if pct-lastPct >= progressMinStep || now.Sub(lastReport) >= progressMinInterval {
 				lastPct = pct
+				lastReport = now
 				onProgress(pct)
 			}
 		}
@@ -95,6 +105,7 @@ func buildArgs(cfg config.Params, input, output string) []string {
 	filter := strings.Join(parts, ",")
 
 	return []string{
+		"-nostdin", "-threads", "0",
 		"-y", "-i", input,
 		"-af", filter,
 		"-b:a", cfg.Bitrate,

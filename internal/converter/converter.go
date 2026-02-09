@@ -105,7 +105,6 @@ func buildArgs(cfg config.Params, input, output string) []string {
 	filter := strings.Join(parts, ",")
 
 	return []string{
-		"-nostdin", "-threads", "0",
 		"-y", "-i", input,
 		"-af", filter,
 		"-b:a", cfg.Bitrate,

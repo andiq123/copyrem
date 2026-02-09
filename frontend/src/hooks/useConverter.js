@@ -1,13 +1,10 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 
-const DEFAULT_API_INFO = {
-  max_upload_mb: 80,
-  allowed_extensions: ['.mp3', '.m4a', '.wav', '.flac', '.aac', '.ogg'],
-  download_suffix: '_modified.mp3',
-}
+const FALLBACK_ACCEPT = '.mp3,.m4a,.wav,.flac,.aac,.ogg'
+const FALLBACK_SUFFIX = '_modified.mp3'
 
-export default function useConvert() {
-  const [apiInfo, setApiInfo] = useState(DEFAULT_API_INFO)
+export default function useConverter() {
+  const [apiInfo, setApiInfo] = useState(null)
   const [file, setFile] = useState(null)
   const [loading, setLoading] = useState(false)
   const [percent, setPercent] = useState(0)
@@ -125,7 +122,7 @@ export default function useConvert() {
             const disp = dl.headers.get('Content-Disposition')
             const match = disp?.match(/filename="?([^";]+)"?/)
             setDownloadUrl(URL.createObjectURL(blob))
-            setDownloadName(match?.[1]?.trim() || `audio${apiInfo.download_suffix}`)
+            setDownloadName(match?.[1]?.trim() || `audio${apiInfo?.download_suffix || FALLBACK_SUFFIX}`)
             setStatus('Your file is ready \u2014 same sound, different fingerprint.')
             setLoading(false)
             jobIdRef.current = null
@@ -139,9 +136,9 @@ export default function useConvert() {
     } catch (err) {
       fail(err.message || 'Something went wrong.')
     }
-  }, [file, apiInfo.download_suffix, closeES, clearState, fail])
+  }, [file, apiInfo?.download_suffix, closeES, clearState, fail])
 
-  const accept = (apiInfo?.allowed_extensions || DEFAULT_API_INFO.allowed_extensions).join(',')
+  const accept = apiInfo?.allowed_extensions?.join(',') ?? FALLBACK_ACCEPT
 
   return {
     apiInfo, file, loading, percent, status, error,

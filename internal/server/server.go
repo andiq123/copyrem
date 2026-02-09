@@ -22,11 +22,6 @@ func NewMux(cfg config.Params, staticDir string) *http.ServeMux {
 	mux.HandleFunc("/convert/cancel/", CancelHandler(store))
 	mux.HandleFunc("/convert/download/", DownloadHandler(store))
 
-	mux.HandleFunc("/separate", RateLimitConvert(SeparateHandler(store)))
-	mux.HandleFunc("/separate/progress/", SeparateProgressHandler(store))
-	mux.HandleFunc("/separate/cancel/", SeparateCancelHandler(store))
-	mux.HandleFunc("/separate/download/", SeparateDownloadHandler(store))
-
 	var staticHandler http.Handler
 	if staticDir != "" {
 		if info, err := os.Stat(staticDir); err == nil && info.IsDir() {

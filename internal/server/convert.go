@@ -121,8 +121,7 @@ func CancelHandler(store *JobStore) http.HandlerFunc {
 		}
 
 		store.Cancel(id)
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.Write([]byte(`{"cancelled":true}`))
+		writeJSON(w, http.StatusOK, struct{ Cancelled bool `json:"cancelled"` }{true})
 	}
 }
 

@@ -1,51 +1,76 @@
-import { useState, useEffect } from 'react'
-import ConvertPage from './features/convert/ConvertPage'
-import SeparatePage from './features/separate/SeparatePage'
-
-const PAGES = { convert: 'convert', separate: 'separate' }
-
-function getPageFromHash() {
-  const hash = window.location.hash.slice(1)
-  return hash === 'separate' ? PAGES.separate : PAGES.convert
-}
-
-function syncHash(page) {
-  const want = page === PAGES.separate ? '#separate' : '#convert'
-  if (window.location.hash !== want) {
-    window.location.hash = want
-  }
-}
+import useConverter from './hooks/useConverter'
+import Dropzone from './components/Dropzone'
+import ProgressCard from './components/ProgressCard'
+import StatusMessage from './components/StatusMessage'
 
 export default function App() {
-  const [page, setPage] = useState(getPageFromHash)
+  const {
+    apiInfo, file, loading, percent, status, error,
+    downloadUrl, downloadName, accept, canReset,
+    pickFile, submit, reset, cancel,
+  } = useConverter()
 
-  useEffect(() => {
-    const onHashChange = () => setPage(getPageFromHash())
-    window.addEventListener('hashchange', onHashChange)
-    return () => window.removeEventListener('hashchange', onHashChange)
-  }, [])
+  const onSubmit = (e) => {
+    e.preventDefault()
+    submit()
+  }
 
-  useEffect(() => syncHash(page), [page])
+  const onReset = () => {
+    reset()
+    const input = document.getElementById('file')
+    if (input) input.value = ''
+  }
 
   return (
-    <div className="app-shell">
-      <nav className="app-nav">
-        <a
-          href="#convert"
-          className={page === PAGES.convert ? 'active' : ''}
-          onClick={(e) => { e.preventDefault(); setPage(PAGES.convert) }}
-        >
-          Convert
-        </a>
-        <a
-          href="#separate"
-          className={page === PAGES.separate ? 'active' : ''}
-          onClick={(e) => { e.preventDefault(); setPage(PAGES.separate) }}
-        >
-          Separate
-        </a>
-      </nav>
-      {page === PAGES.convert ? <ConvertPage /> : <SeparatePage />}
+    <div className="widget">
+      <div className="brand">
+        <span className="brand-name">CopyRem</span>
+        <span className="brand-tag">Same sound, different fingerprint</span>
+      </div>
+
+      <form onSubmit={onSubmit} className="upload-form">
+        <Dropzone file={file} accept={accept} disabled={loading} onFile={pickFile} />
+        <button type="submit" className="btn btn-primary" disabled={!file || loading}>
+          {loading ? 'Processing\u2026' : 'Convert'}
+        </button>
+      </form>
+
+      {loading && (
+        <>
+          <ProgressCard percent={percent} />
+          <div className="cancel-wrap">
+            <button type="button" className="btn btn-cancel" onClick={cancel}>
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
+
+      {status && !loading && <StatusMessage message={status} isError={error} />}
+
+      {downloadUrl && !loading && (
+        <div className="result">
+          <a
+            href={downloadUrl}
+            className="btn btn-success"
+            download={downloadName}
+          >
+            Download
+          </a>
+        </div>
+      )}
+
+      {canReset && !loading && (
+        <div className="reset-wrap">
+          <button type="button" className="btn btn-ghost" onClick={onReset}>
+            Start over
+          </button>
+        </div>
+      )}
+
+      <div className="widget-footer">
+        MP3 &middot; M4A &middot; WAV &middot; FLAC &middot; AAC &middot; OGG &middot; max {apiInfo?.max_upload_mb ?? 80} MB
+      </div>
     </div>
   )
 }

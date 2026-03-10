@@ -1,10 +1,10 @@
 # CopyRem
 
-Modify your audio file so it won't get detected — same sound, different fingerprint.
+**Same sound, different fingerprint.** Upload an audio file and get a modified version that keeps the sound but changes the fingerprint—so it won’t get detected by content ID or matching systems.
 
 **Live:** [everyday-deeann-andi3-92f6ccf7.koyeb.app](https://everyday-deeann-andi3-92f6ccf7.koyeb.app/)
 
-Supports MP3, M4A, WAV, FLAC, AAC, OGG. Output: 320 kbps MP3.
+Accepts MP3, M4A, WAV, FLAC, AAC, OGG. Output: 320kbps MP3. Free, no signup.
 
 ## Requirements
 

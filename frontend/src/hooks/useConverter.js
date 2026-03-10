@@ -1,9 +1,11 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { useWebHaptics } from 'web-haptics/react'
 
 const FALLBACK_ACCEPT = '.mp3,.m4a,.wav,.flac,.aac,.ogg'
 const FALLBACK_SUFFIX = '_modified.mp3'
 
 export default function useConverter() {
+  const haptic = useWebHaptics()
   const [apiInfo, setApiInfo] = useState(null)
   const [file, setFile] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -59,11 +61,12 @@ export default function useConverter() {
   }, [closeES])
 
   const fail = useCallback((msg) => {
+    haptic.trigger('error', { intensity: 0.9 })
     stopJob()
     setStatus(msg)
     setError(true)
     setLoading(false)
-  }, [stopJob])
+  }, [stopJob, haptic])
 
   const pickFile = useCallback((f) => {
     if (!f) return
@@ -123,20 +126,22 @@ export default function useConverter() {
             const match = disp?.match(/filename="?([^";]+)"?/)
             setDownloadUrl(URL.createObjectURL(blob))
             setDownloadName(match?.[1]?.trim() || `audio${apiInfo?.download_suffix || FALLBACK_SUFFIX}`)
-            setStatus('Your file is ready \u2014 same sound, different fingerprint.')
+            setStatus('Ready. Same sound, different fingerprint.')
             setLoading(false)
             jobIdRef.current = null
+            haptic.trigger('success')
+            setTimeout(() => haptic.trigger('heavy'), 120)
           } catch {
-            fail('Download failed.')
+            fail('Download didn\u2019t complete. Try again.')
           }
         }
       }
 
       es.onerror = () => fail('Connection lost. Please try again.')
     } catch (err) {
-      fail(err.message || 'Something went wrong.')
+      fail(err.message || 'Something went wrong. Try again.')
     }
-  }, [file, apiInfo?.download_suffix, closeES, clearState, fail])
+  }, [file, apiInfo?.download_suffix, closeES, clearState, fail, haptic])
 
   const accept = apiInfo?.allowed_extensions?.join(',') ?? FALLBACK_ACCEPT
 

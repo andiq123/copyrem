@@ -2,15 +2,17 @@
   --surface: rgba(255, 255, 255, 0.06);
   --surface-dim: rgba(255, 255, 255, 0.04);
   --border: rgba(255, 255, 255, 0.08);
-  --text: #ededef;
-  --text-secondary: #7e7e8a;
-  --accent: #c6f135;
+  --text: #e8e8ec;
+  --text-secondary: #8a8a96;
+  --accent: #b8f23a;
+  --accent-dim: rgba(184, 242, 58, 0.12);
   --success: #34d399;
   --error: #f87171;
   --radius: 18px;
   --radius-full: 999px;
-  --font: "Plus Jakarta Sans", system-ui, sans-serif;
-  --font-display: "Syne", var(--font);
+  --font: "Outfit", system-ui, sans-serif;
+  --font-display: "Bebas Neue", var(--font);
+  --shadow-widget: 0 32px 64px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 *,
@@ -26,9 +28,11 @@ body {
   font-size: 15px;
   line-height: 1.6;
   color: var(--text);
-  background: linear-gradient(160deg, #0b0d12 0%, #111827 40%, #0f172a 70%, #0b0d14 100%);
+  background: linear-gradient(165deg, #06080c 0%, #0c0e14 25%, #0f1219 50%, #0a0c12 100%);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 #root {
@@ -39,6 +43,22 @@ body {
   padding: 2rem;
   position: relative;
   overflow: hidden;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.35;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+
+#root > * {
+  position: relative;
+  z-index: 1;
 }
 
 #root::before,
@@ -82,6 +102,21 @@ body {
   100% { transform: translate(-10%, -35%) scale(0.9); }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  #root::before,
+  #root::after {
+    animation: none;
+  }
+  .widget,
+  .brand,
+  .upload-form {
+    animation: none;
+  }
+  .dropzone:hover {
+    transform: none;
+  }
+}
+
 .widget {
   position: relative;
   z-index: 1;
@@ -92,24 +127,52 @@ body {
   border-radius: 28px;
   padding: 3rem 2.5rem 2.25rem;
   backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-widget);
+  animation: widget-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes widget-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .brand {
   text-align: center;
   margin-bottom: 2.5rem;
+  animation: fade-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+}
+
+.upload-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  animation: fade-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.18s both;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .brand-name {
+  margin: 0;
   font-family: var(--font-display);
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: 2rem;
+  font-weight: 400;
   color: #fff;
-  letter-spacing: -0.03em;
+  letter-spacing: 0.02em;
+  text-wrap: balance;
+  text-transform: uppercase;
 }
 
 .brand-tag {
-  display: block;
-  margin-top: 0.35rem;
+  margin: 0.35rem 0 0;
   font-size: 0.8125rem;
   color: var(--text-secondary);
   font-weight: 400;
@@ -123,11 +186,6 @@ body {
   overflow: hidden;
 }
 
-.upload-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
 
 .dropzone {
   display: flex;
@@ -135,22 +193,31 @@ body {
   align-items: center;
   justify-content: center;
   min-height: 180px;
+  min-width: 0;
   padding: 2.5rem 2rem;
   background: var(--surface-dim);
   border: 1.5px dashed rgba(255, 255, 255, 0.1);
   border-radius: 20px;
   cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s, transform 0.2s;
+  touch-action: manipulation;
 }
 
 .dropzone:hover {
   border-color: rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.06);
+  transform: scale(1.005);
+}
+
+.dropzone:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
 }
 
 .dropzone.dragover {
   border-color: var(--accent);
-  background: rgba(198, 241, 53, 0.04);
+  background: var(--accent-dim);
 }
 
 .dropzone-icon {
@@ -164,6 +231,10 @@ body {
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--text);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dropzone-meta {
@@ -181,6 +252,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-height: 44px;
   padding: 0.85rem 1.5rem;
   font-family: var(--font);
   font-size: 0.875rem;
@@ -188,7 +260,26 @@ body {
   border: none;
   border-radius: var(--radius-full);
   cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
+  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+  touch-action: manipulation;
+}
+
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35);
+}
+
+.btn-primary:focus-visible {
+  box-shadow: 0 0 0 3px rgba(184, 242, 58, 0.5);
+}
+
+.btn-success:focus-visible {
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.5);
+}
+
+.btn-ghost:focus-visible,
+.btn-cancel:focus-visible {
+  box-shadow: 0 0 0 2px var(--text-secondary);
 }
 
 .btn:active:not(:disabled) {
@@ -206,7 +297,8 @@ body {
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #d4f94a;
+  background: #c4fa50;
+  box-shadow: 0 0 24px rgba(184, 242, 58, 0.25);
 }
 
 .btn-success {
@@ -318,4 +410,20 @@ body {
   color: var(--text-secondary);
   opacity: 0.6;
   line-height: 1.6;
+}
+
+@media (max-width: 480px) {
+  #root {
+    padding: 1rem;
+  }
+
+  .widget {
+    padding: 2rem 1.5rem 1.75rem;
+    border-radius: 24px;
+  }
+
+  .dropzone {
+    min-height: 160px;
+    padding: 2rem 1.5rem;
+  }
 }

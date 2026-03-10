@@ -1,37 +1,49 @@
+import { useRef } from 'react'
 import useConverter from './hooks/useConverter'
 import Dropzone from './components/Dropzone'
 import ProgressCard from './components/ProgressCard'
 import StatusMessage from './components/StatusMessage'
 
 export default function App() {
+  const fileInputRef = useRef(null)
   const {
     apiInfo, file, loading, percent, status, error,
     downloadUrl, downloadName, accept, canReset,
     pickFile, submit, reset, cancel,
   } = useConverter()
 
-  const onSubmit = (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault()
     submit()
   }
 
-  const onReset = () => {
+  const handleReset = () => {
     reset()
-    const input = document.getElementById('file')
-    if (input) input.value = ''
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   return (
-    <div className="widget">
-      <div className="brand">
-        <span className="brand-name">CopyRem</span>
-        <span className="brand-tag">Same sound, different fingerprint</span>
-      </div>
+    <main className="widget" aria-busy={loading} aria-live="polite">
+      <header className="brand">
+        <h1 className="brand-name">CopyRem</h1>
+        <p className="brand-tag">Same sound, different fingerprint</p>
+      </header>
 
-      <form onSubmit={onSubmit} className="upload-form">
-        <Dropzone file={file} accept={accept} disabled={loading} onFile={pickFile} />
-        <button type="submit" className="btn btn-primary" disabled={!file || loading}>
-          {loading ? 'Processing\u2026' : 'Convert'}
+      <form onSubmit={handleSubmit} className="upload-form" noValidate>
+        <Dropzone
+          file={file}
+          accept={accept}
+          disabled={loading}
+          onFile={pickFile}
+          inputRef={fileInputRef}
+        />
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={!file || loading}
+          aria-busy={loading}
+        >
+          {loading ? 'Processing…' : 'Convert'}
         </button>
       </form>
 
@@ -62,15 +74,15 @@ export default function App() {
 
       {canReset && !loading && (
         <div className="reset-wrap">
-          <button type="button" className="btn btn-ghost" onClick={onReset}>
+          <button type="button" className="btn btn-ghost" onClick={handleReset}>
             Start over
           </button>
         </div>
       )}
 
-      <div className="widget-footer">
-        MP3 &middot; M4A &middot; WAV &middot; FLAC &middot; AAC &middot; OGG &middot; max {apiInfo?.max_upload_mb ?? 80} MB
-      </div>
-    </div>
+      <footer className="widget-footer">
+        MP3 &middot; M4A &middot; WAV &middot; FLAC &middot; AAC &middot; OGG &middot; max {apiInfo?.max_upload_mb ?? 80}&nbsp;MB
+      </footer>
+    </main>
   )
 }

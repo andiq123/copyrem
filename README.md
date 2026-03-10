@@ -34,3 +34,12 @@ Backend on `:8080`, Vite on `:5173` with proxy to backend.
 ## Deployment
 
 Use HTTPS. Set `TRUST_PROXY=1` behind a reverse proxy. Update the canonical URL in `frontend/index.html` to match your domain.
+
+## Troubleshooting
+
+**`npm warn Unknown env config "devdir"`** — Cursor (or another tool) sets `npm_config_devdir` for node-gyp; npm doesn’t recognize it. Safe to ignore, or clear it before running npm:
+
+```bash
+unset npm_config_devdir
+cd frontend && npm install && npm run build
+```

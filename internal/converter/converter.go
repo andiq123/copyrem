@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"math"
 	"os/exec"
 	"strconv"
@@ -26,6 +27,9 @@ func ConvertWithProgress(ctx context.Context, cfg config.Params, input, output s
 		if dur, err := ffmpeg.Duration(binary, input); err == nil && dur > 0 {
 			totalUs = float64(dur.Microseconds())
 		}
+		if totalUs == 0 {
+			onProgress = nil
+		}
 	}
 
 	args := buildArgs(cfg, input, output, intensity)
@@ -37,41 +41,20 @@ func ConvertWithProgress(ctx context.Context, cfg config.Params, input, output s
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
-	if onProgress != nil && totalUs > 0 {
-		stdout, err := cmd.StdoutPipe()
-		if err != nil {
+	var stdout io.ReadCloser
+	var err error
+	if onProgress != nil {
+		if stdout, err = cmd.StdoutPipe(); err != nil {
 			return fmt.Errorf("stdout pipe: %w", err)
 		}
-		if err := cmd.Start(); err != nil {
-			return fmt.Errorf("ffmpeg start: %w", err)
-		}
-		scanner := bufio.NewScanner(stdout)
-		scanner.Buffer(make([]byte, 256), 256)
-		lastPct := 0
-		lastReport := time.Time{}
-		for scanner.Scan() {
-			if !strings.HasPrefix(scanner.Text(), "out_time_us=") {
-				continue
-			}
-			us, err := strconv.ParseFloat(strings.TrimPrefix(scanner.Text(), "out_time_us="), 64)
-			if err != nil {
-				continue
-			}
-			pct := int(math.Min(99, (us/totalUs)*100))
-			if pct <= lastPct {
-				continue
-			}
-			now := time.Now()
-			if pct-lastPct >= progressMinStep || now.Sub(lastReport) >= progressMinInterval {
-				lastPct = pct
-				lastReport = now
-				onProgress(pct)
-			}
-		}
-	} else {
-		if err := cmd.Start(); err != nil {
-			return fmt.Errorf("ffmpeg start: %w", err)
-		}
+	}
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("ffmpeg start: %w", err)
+	}
+
+	if onProgress != nil && stdout != nil {
+		trackProgress(stdout, totalUs, onProgress)
 	}
 
 	if err := cmd.Wait(); err != nil {
@@ -87,6 +70,34 @@ func ConvertWithProgress(ctx context.Context, cfg config.Params, input, output s
 		onProgress(100)
 	}
 	return nil
+}
+
+func trackProgress(stdout io.ReadCloser, totalUs float64, onProgress func(int)) {
+	scanner := bufio.NewScanner(stdout)
+	scanner.Buffer(make([]byte, 256), 256)
+	lastPct := 0
+	lastReport := time.Time{}
+
+	for scanner.Scan() {
+		text := scanner.Text()
+		if !strings.HasPrefix(text, "out_time_us=") {
+			continue
+		}
+		us, err := strconv.ParseFloat(strings.TrimPrefix(text, "out_time_us="), 64)
+		if err != nil {
+			continue
+		}
+		pct := int(math.Min(99, (us/totalUs)*100))
+		if pct <= lastPct {
+			continue
+		}
+		now := time.Now()
+		if pct-lastPct >= progressMinStep || now.Sub(lastReport) >= progressMinInterval {
+			lastPct = pct
+			lastReport = now
+			onProgress(pct)
+		}
+	}
 }
 
 func buildArgs(cfg config.Params, input, output string, intensity float64) []string {

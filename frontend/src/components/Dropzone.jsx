@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { useWebHaptics } from 'web-haptics/react'
+import { UploadCloud } from 'lucide-react'
 import { formatSize } from '../utils/formatSize'
 
 export default function Dropzone({ file, accept, disabled, onFile, inputRef }) {
@@ -50,22 +51,25 @@ export default function Dropzone({ file, accept, disabled, onFile, inputRef }) {
       />
       <label
         htmlFor="file"
-        className={`dropzone ${file ? 'dropzone-has-file' : ''} ${disabled ? 'dropzone-disabled' : ''}`}
+        className={`dropzone-container ${file ? 'is-active' : ''} ${disabled ? 'disabled' : ''}`}
         onDrop={onDrop}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
       >
-        <span className="dropzone-icon" aria-hidden>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="17 8 12 3 7 8" />
-            <line x1="12" y1="3" x2="12" y2="15" />
-          </svg>
-        </span>
-        <span className="dropzone-text" title={file?.name}>
-          {file ? file.name : 'Drop an audio file or click to choose'}
-        </span>
-        {file && <span className="dropzone-meta">{formatSize(file.size)}</span>}
+        <div className="dropzone-icon">
+          <UploadCloud size={44} strokeWidth={1} style={{ filter: 'drop-shadow(0 0 10px var(--accent-glow))', color: 'var(--accent)' }} />
+        </div>
+        <div className="dropzone-text">
+          {file ? (
+            <div className="filename-display">{file.name}</div>
+          ) : (
+            <>
+              <div>Drop source file</div>
+              <div className="brand-tag" style={{ marginTop: '4px', fontSize: '0.65rem' }}>or click to browse</div>
+            </>
+          )}
+        </div>
+        {file && <div className="brand-tag" style={{ marginTop: '0.5rem', opacity: 0.5 }}>{formatSize(file.size)}</div>}
       </label>
     </>
   )

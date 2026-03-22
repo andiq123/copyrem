@@ -121,17 +121,29 @@ func (s *JobStore) Cancel(id string) {
 func (s *JobStore) cleanup() {
 	for {
 		time.Sleep(jobCleanupEvery)
-		s.mu.Lock()
 		now := time.Now()
+		
+		var toDelete []string
+		var pathsToDelete []string
+
+		s.mu.Lock()
 		for id, j := range s.jobs {
 			if now.Sub(j.CreatedAt) > jobTTL {
 				j.cancel()
-				_ = os.Remove(j.InPath)
-				_ = os.Remove(j.OutPath)
-				delete(s.jobs, id)
+				pathsToDelete = append(pathsToDelete, j.InPath, j.OutPath)
+				toDelete = append(toDelete, id)
 			}
 		}
+		for _, id := range toDelete {
+			delete(s.jobs, id)
+		}
 		s.mu.Unlock()
+
+		for _, p := range pathsToDelete {
+			if p != "" {
+				_ = os.Remove(p)
+			}
+		}
 	}
 }
 

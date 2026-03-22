@@ -12,14 +12,18 @@ import (
 )
 
 func FindBinary() string {
-	if p, err := exec.LookPath("ffmpeg"); err == nil {
-		return p
-	}
-	return findBin("ffmpeg")
+	return find("ffmpeg")
 }
 
-func Duration(binary, path string) (time.Duration, error) {
-	probe := siblingBin(binary, "ffprobe")
+func Duration(ffmpegBinary, path string) (time.Duration, error) {
+	probe := find("ffprobe")
+	// If ffprobe is not in PATH, try same dir as ffmpeg
+	if _, err := exec.LookPath("ffprobe"); err != nil {
+		if p := filepath.Join(filepath.Dir(ffmpegBinary), "ffprobe"); fileExists(p) {
+			probe = p
+		}
+	}
+
 	var buf bytes.Buffer
 	cmd := exec.Command(probe, "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", path)
 	cmd.Stdout = &buf
@@ -33,26 +37,26 @@ func Duration(binary, path string) (time.Duration, error) {
 	return time.Duration(secs * float64(time.Second)), nil
 }
 
-func findBin(name string) string {
+func find(name string) string {
+	if p, err := exec.LookPath(name); err == nil {
+		return p
+	}
 	for _, dir := range searchDirs() {
 		p := filepath.Join(dir, name)
-		if _, err := os.Stat(p); err == nil {
+		if fileExists(p) {
 			return p
 		}
 	}
 	return name
 }
 
-func siblingBin(binary, name string) string {
-	candidate := filepath.Join(filepath.Dir(binary), name)
-	if _, err := os.Stat(candidate); err == nil {
-		return candidate
-	}
-	return name
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 func searchDirs() []string {
-	var dirs []string
+	dirs := []string{}
 	if exe, err := os.Executable(); err == nil {
 		dirs = append(dirs, filepath.Join(filepath.Dir(exe), "bin"))
 	}
@@ -61,3 +65,4 @@ func searchDirs() []string {
 	}
 	return dirs
 }
+

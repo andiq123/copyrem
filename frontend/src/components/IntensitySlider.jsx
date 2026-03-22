@@ -4,7 +4,14 @@ export default function IntensitySlider({ value, onChange, disabled }) {
   const haptic = useWebHaptics()
 
   return (
-    <div className="intensity-section">
+    <div 
+      className="intensity-section"
+      style={{ 
+        opacity: disabled ? 0.3 : 1, 
+        pointerEvents: disabled ? 'none' : 'auto', 
+        transition: 'opacity 0.4s var(--ease-out-expo)' 
+      }}
+    >
       <div className="intensity-header">
         <label htmlFor="intensity-slider" className="intensity-title">Engine Intensity</label>
         <span className="intensity-display">{value.toFixed(2)}x</span>

@@ -9,17 +9,19 @@ export default function Dropzone({ file, accept, disabled, onFile, inputRef }) {
   const onDrop = useCallback((e) => {
     e.preventDefault()
     e.currentTarget.classList.remove('dragover')
+    if (disabled) return
     const f = e.dataTransfer.files?.[0]
     if (f) {
       haptic.trigger('heavy')
       onFile(f)
     }
-  }, [onFile, haptic])
+  }, [onFile, haptic, disabled])
 
   const onDragOver = useCallback((e) => {
     e.preventDefault()
+    if (disabled) return
     e.currentTarget.classList.add('dragover')
-  }, [])
+  }, [disabled])
 
   const onDragLeave = useCallback((e) => {
     const related = e.relatedTarget

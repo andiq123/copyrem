@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
-import { Zap, Download, XCircle } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { Zap, Download, CheckCircle2 } from 'lucide-react'
 import { useWebHaptics } from 'web-haptics/react'
 import useConverter from './hooks/useConverter'
 import Dropzone from './components/Dropzone'
@@ -20,25 +20,6 @@ export default function App() {
 
   const [intensity, setIntensity] = useState(1.0)
 
-  // Dynamic Audio Duration
-  const [duration, setDuration] = useState(null)
-  
-  useEffect(() => {
-    if (!file) return
-    
-    const objectUrl = URL.createObjectURL(file)
-    const audio = new Audio(objectUrl)
-    
-    audio.onloadedmetadata = () => {
-      const mins = Math.floor(audio.duration / 60)
-      const secs = Math.floor(audio.duration % 60)
-      setDuration(`${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`)
-    }
-    
-    return () => URL.revokeObjectURL(objectUrl)
-  }, [file])
-  
-  const displayDuration = file ? (duration || '00:00') : '00:00'
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -75,13 +56,7 @@ export default function App() {
             <h2 className="panel-title">AUDIO TRANSFORMATION ENGINE</h2>
             <p className="panel-subtitle">Select and process your audio files</p>
           </div>
-          <div className="panel-meta">
-            <div className="meta-row">
-              <span>DURATION:</span>
-              <span>{displayDuration}</span>
-            </div>
-            <div className="meta-row"><span>STATUS:</span> {status ? 'COMPLETED' : (file ? 'READY' : 'STANDBY')}</div>
-          </div>
+
         </div>
 
         <section className="transformation-engine">
@@ -130,18 +105,21 @@ export default function App() {
           </form>
         </section>
 
-        {status && !loading && (
+        {(status && !downloadUrl) && !loading && (
           <StatusMessage message={status} isError={error} />
         )}
 
         {downloadUrl && !loading && (
           <div className="result-card">
+            <div className="result-header">
+              <CheckCircle2 size={20} className="text-accent" />
+              <span className="result-text">{status}</span>
+            </div>
             <a
               href={downloadUrl}
               className="btn-download"
               download={downloadName}
               onClick={() => haptic.trigger('success')}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
             >
               <Download size={20} />
               <span>Download Reconstructed Audio</span>

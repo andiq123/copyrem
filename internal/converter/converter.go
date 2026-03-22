@@ -2,6 +2,7 @@ package converter
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"math"
@@ -17,7 +18,7 @@ import (
 const progressMinStep = 2
 const progressMinInterval = 200 * time.Millisecond
 
-func ConvertWithProgress(ctx context.Context, cfg config.Params, input, output string, onProgress func(int)) error {
+func ConvertWithProgress(ctx context.Context, cfg config.Params, input, output string, intensity float64, onProgress func(int)) error {
 	binary := ffmpeg.FindBinary()
 
 	var totalUs float64
@@ -27,12 +28,14 @@ func ConvertWithProgress(ctx context.Context, cfg config.Params, input, output s
 		}
 	}
 
-	args := buildArgs(cfg, input, output)
+	args := buildArgs(cfg, input, output, intensity)
 	if onProgress != nil {
 		args = append([]string{"-progress", "pipe:1"}, args...)
 	}
 
 	cmd := exec.CommandContext(ctx, binary, args...)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
 
 	if onProgress != nil && totalUs > 0 {
 		stdout, err := cmd.StdoutPipe()
@@ -75,6 +78,9 @@ func ConvertWithProgress(ctx context.Context, cfg config.Params, input, output s
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
+		if stderr.Len() > 0 {
+			return fmt.Errorf("ffmpeg: %w (stderr: %s)", err, strings.TrimSpace(stderr.String()))
+		}
 		return fmt.Errorf("ffmpeg: %w", err)
 	}
 	if onProgress != nil {
@@ -83,12 +89,22 @@ func ConvertWithProgress(ctx context.Context, cfg config.Params, input, output s
 	return nil
 }
 
-func buildArgs(cfg config.Params, input, output string) []string {
+func buildArgs(cfg config.Params, input, output string, intensity float64) []string {
 	sr := cfg.SampleRate
-	p := math.Pow(2, cfg.PitchSemitones/12)
+	p := math.Pow(2, (cfg.PitchSemitones*intensity)/12)
 
 	pitch := fmt.Sprintf("asetrate=%d*%.6f,aresample=%d,atempo=%.6f", sr, p, sr, 1/p)
-	tempo := fmt.Sprintf("atempo=%.4f", cfg.TempoFactor)
+
+	// Scale tempo: if TempoFactor < 1, higher intensity makes it slower
+	var tf float64
+	if cfg.TempoFactor < 1.0 {
+		tf = 1.0 - (1.0-cfg.TempoFactor)*intensity
+	} else {
+		tf = 1.0 + (cfg.TempoFactor-1.0)*intensity
+	}
+	// Clamp tempo to ffmpeg limits (0.5 to 2.0 per atempo filter)
+	tf = math.Max(0.5, math.Min(2.0, tf))
+	tempo := fmt.Sprintf("atempo=%.4f", tf)
 
 	var resample []string
 	for _, r := range cfg.ResampleRates {
@@ -96,7 +112,9 @@ func buildArgs(cfg config.Params, input, output string) []string {
 	}
 	resample = append(resample, fmt.Sprintf("aresample=%d", sr))
 
-	delay := fmt.Sprintf("adelay=%d|%d", cfg.DelayLeftMs, cfg.DelayRightMs)
+	delayL := int(float64(cfg.DelayLeftMs) * intensity)
+	delayR := int(float64(cfg.DelayRightMs) * intensity)
+	delay := fmt.Sprintf("adelay=%d|%d", delayL, delayR)
 
 	parts := make([]string, 0, 2+len(resample)+1)
 	parts = append(parts, pitch, tempo)

@@ -3,9 +3,11 @@ package server
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -28,9 +30,16 @@ func ConvertHandler(cfg config.Params, store *JobStore) http.HandlerFunc {
 		outPath := filepath.Join(dir, randHex(8)+".mp3")
 		job := store.Create(inPath, outPath, baseName+DownloadSuffix)
 
+		intensity := 1.0
+		if val := r.FormValue("intensity"); val != "" {
+			if f, err := strconv.ParseFloat(val, 64); err == nil {
+				intensity = f
+			}
+		}
+
 		go func() {
 			store.SetRunning(job.ID)
-			err := converter.ConvertWithProgress(job.Ctx, cfg, inPath, outPath, func(pct int) {
+			err := converter.ConvertWithProgress(job.Ctx, cfg, inPath, outPath, intensity, func(pct int) {
 				store.SetPercent(job.ID, pct)
 			})
 			_ = os.Remove(inPath)
@@ -38,7 +47,8 @@ func ConvertHandler(cfg config.Params, store *JobStore) http.HandlerFunc {
 				if job.Ctx.Err() == context.Canceled {
 					return
 				}
-				store.SetFailed(job.ID, "conversion failed")
+				log.Printf("job %s failed: %v", job.ID, err)
+				store.SetFailed(job.ID, err.Error())
 				return
 			}
 			store.SetDone(job.ID)

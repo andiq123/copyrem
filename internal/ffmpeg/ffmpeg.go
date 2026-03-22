@@ -12,6 +12,9 @@ import (
 )
 
 func FindBinary() string {
+	if p, err := exec.LookPath("ffmpeg"); err == nil {
+		return p
+	}
 	return findBin("ffmpeg")
 }
 

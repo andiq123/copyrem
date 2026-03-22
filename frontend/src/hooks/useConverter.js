@@ -87,7 +87,7 @@ export default function useConverter() {
     clearState()
   }, [stopJob, clearState])
 
-  const submit = useCallback(async () => {
+  const submit = useCallback(async (intensity = 1.0) => {
     if (!file) return
 
     closeES()
@@ -96,6 +96,7 @@ export default function useConverter() {
 
     const form = new FormData()
     form.append('file', file)
+    form.append('intensity', intensity.toString())
 
     try {
       const res = await fetch('/convert', { method: 'POST', body: form })

@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useState, useRef } from 'react'
 import { useWebHaptics } from 'web-haptics/react'
 import useConverter from './hooks/useConverter'
 import Dropzone from './components/Dropzone'
@@ -14,10 +14,11 @@ export default function App() {
     pickFile, submit, reset, cancel,
   } = useConverter()
 
+  const [intensity, setIntensity] = useState(1.0)
   const handleSubmit = (e) => {
     e.preventDefault()
     haptic.trigger([40, 35, 90])
-    submit()
+    submit(intensity)
   }
 
   const handleReset = () => {
@@ -41,6 +42,33 @@ export default function App() {
           onFile={pickFile}
           inputRef={fileInputRef}
         />
+        <div className="intensity-control">
+          <div className="intensity-header">
+            <label htmlFor="intensity-slider" className="intensity-label">Intensity</label>
+            <span className="intensity-value">{intensity.toFixed(2)}x</span>
+          </div>
+          <input
+            id="intensity-slider"
+            type="range"
+            min="0.5"
+            max="2.0"
+            step="0.05"
+            value={intensity}
+            onChange={(e) => {
+              const val = parseFloat(e.target.value)
+              setIntensity(val)
+              if (Math.abs(val - 1.0) < 0.01) haptic.trigger('soft')
+            }}
+            disabled={loading}
+            className="intensity-slider"
+          />
+          <div className="intensity-labels">
+            <span>Subtle</span>
+            <span>Default</span>
+            <span>Heavy</span>
+          </div>
+        </div>
+
         <button
           type="submit"
           className="btn btn-primary"

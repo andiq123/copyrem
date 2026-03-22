@@ -200,6 +200,84 @@ body::after {
   to { opacity: 1; transform: translateY(0); }
 }
 
+.intensity-control {
+  margin: 0.5rem 0 1rem;
+  padding: 1.25rem;
+  background: var(--surface-dim);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.intensity-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.intensity-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.intensity-value {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+
+.intensity-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  outline: none;
+  margin: 0.5rem 0;
+}
+
+.intensity-slider::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 6px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+}
+
+.intensity-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  margin-top: -7px; /* Centers thumb on track */
+  box-shadow: 0 0 10px rgba(184, 242, 58, 0.4), 0 0 0 4px rgba(184, 242, 58, 0.1);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.intensity-slider:active::-webkit-slider-thumb {
+  transform: scale(1.15);
+  box-shadow: 0 0 15px rgba(184, 242, 58, 0.6), 0 0 0 6px rgba(184, 242, 58, 0.15);
+}
+
+.intensity-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.6875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  opacity: 0.6;
+}
+
 .brand-name {
   margin: 0;
   font-family: var(--font-display);

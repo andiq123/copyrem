@@ -18,9 +18,11 @@
   --border: rgba(255, 255, 255, 0.1);
   --border-bright: rgba(255, 255, 255, 0.2);
   
-  /* Glassmorphism */
-  --glass-blur: 24px;
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+  /* Glassmorphism 2.0 */
+  --glass-blur: 40px;
+  --glass-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.12);
+  --glass-reflect: inset 0 1px 1px rgba(255, 255, 255, 0.1);
   
   /* Radii */
   --radius-xl: 32px;
@@ -53,7 +55,11 @@
 
 body {
   background-color: var(--bg-base);
-  background: radial-gradient(circle at 50% 50%, #0a0c12 0%, #06080c 100%);
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(184, 242, 58, 0.08) 0, transparent 50%),
+    radial-gradient(at 50% 100%, rgba(99, 102, 241, 0.08) 0, transparent 50%),
+    radial-gradient(circle at 50% 50%, #0a0c12 0%, #06080c 100%);
   color: var(--text-primary);
   font-family: var(--font-display);
   overflow-x: hidden;
@@ -81,60 +87,54 @@ body {
 .orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.15;
+  filter: blur(220px);
+  opacity: 0.12;
+  pointer-events: none;
+  mix-blend-mode: screen;
   will-change: transform;
 }
 
 .orb-1 {
-  width: 500px;
-  height: 500px;
-  background: var(--accent);
+  width: 700px;
+  height: 700px;
+  background: var(--secondary);
   top: -10%;
-  left: 10%;
-  animation: drift 20s infinite alternate var(--ease-out-expo);
+  left: -5%;
+  animation: drift 25s infinite alternate var(--ease-out-expo);
 }
 
 .orb-2 {
   width: 600px;
   height: 600px;
-  background: var(--secondary);
-  bottom: -20%;
-  right: -10%;
-  animation: drift 25s infinite alternate-reverse var(--ease-out-expo);
+  background: var(--accent);
+  bottom: -5%;
+  right: -5%;
+  animation: drift 35s infinite alternate-reverse var(--ease-out-expo);
 }
 
 .orb-3 {
-  width: 300px;
-  height: 300px;
-  background: #34d399;
+  width: 450px;
+  height: 450px;
+  background: #38bdf8;
   top: 40%;
-  left: -15%;
-  animation: drift 18s infinite alternate var(--ease-out-expo);
+  left: 20%;
+  animation: drift 45s infinite alternate var(--ease-out-expo);
 }
 
 .orb-4 {
-  width: 200px;
-  height: 200px;
+  width: 500px;
+  height: 500px;
   background: #a855f7;
-  top: 10%;
-  right: 20%;
-  animation: drift 22s infinite alternate-reverse var(--ease-out-expo);
+  top: 50%;
+  right: 15%;
+  animation: drift 30s infinite alternate-reverse var(--ease-out-expo);
 }
 
 @keyframes drift {
-  from { transform: translate(0, 0) scale(1); }
-  to { transform: translate(150px, 100px) scale(1.2); }
+  from { transform: translate(-100px, -100px) rotate(0deg) scale(1); }
+  to { transform: translate(150px, 150px) rotate(360deg) scale(1.1); }
 }
 
-.noise-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  opacity: 0.15;
-  pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
 
 .file-input {
   position: absolute;
@@ -201,14 +201,14 @@ body {
 .panel {
   position: relative;
   overflow: hidden;
-  background: rgba(10, 12, 18, 0.4);
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(10, 12, 18, 0.35);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: var(--glass-border);
   border-radius: var(--radius-xl);
   padding: var(--s-5);
   gap: var(--s-3);
-  box-shadow: var(--glass-shadow), inset 0 0 40px rgba(255, 255, 255, 0.02);
+  box-shadow: var(--glass-shadow), var(--glass-reflect), inset 0 0 40px rgba(255, 255, 255, 0.02);
   display: flex;
   flex-direction: column;
 }

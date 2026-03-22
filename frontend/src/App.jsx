@@ -43,7 +43,6 @@ export default function App() {
         <div className="orb orb-2" />
         <div className="orb orb-3" />
         <div className="orb orb-4" />
-        <div className="noise-overlay" />
       </div>
 
       <div className="app-container" aria-busy={loading} aria-live="polite">

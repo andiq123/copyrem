@@ -13,7 +13,7 @@ export default function IntensitySlider({ value, onChange, disabled }) {
       }}
     >
       <div className="intensity-header">
-        <label htmlFor="intensity-slider" className="intensity-title">Engine Intensity</label>
+        <label htmlFor="intensity-slider" className="intensity-title">Strength</label>
         <span className="intensity-display">{value.toFixed(2)}x</span>
       </div>
       <input

@@ -52,8 +52,8 @@ export default function App() {
       <main className="panel">
         <div className="panel-header">
           <div className="panel-title-group">
-            <h2 className="panel-title">AUDIO TRANSFORMATION ENGINE</h2>
-            <p className="panel-subtitle">Select and process your audio files</p>
+            <h2 className="panel-title">Upload your audio</h2>
+            <p className="panel-subtitle">Choose a file, set strength, download your MP3</p>
           </div>
 
         </div>
@@ -96,7 +96,7 @@ export default function App() {
                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
                   >
                     <Zap size={20} />
-                    <span>Execute Transformation</span>
+                    <span>Process and download</span>
                   </button>
                 )}
               </div>
@@ -121,7 +121,7 @@ export default function App() {
               onClick={() => haptic.trigger('success')}
             >
               <Download size={20} />
-              <span>Download Reconstructed Audio</span>
+              <span>Download MP3</span>
             </a>
           </div>
         )}
@@ -129,16 +129,16 @@ export default function App() {
         {canReset && !loading && (
           <div style={{ textAlign: 'center' }}>
             <button type="button" className="btn-ghost" onClick={handleReset}>
-              Clear Workspace
+              Start over
             </button>
           </div>
         )}
       </main>
 
       <footer className="info-footer">
-        <span>Engine v2.4</span>
+        <span>Free, no signup</span>
         <span className="dot">•</span>
-        <span>{apiInfo?.max_upload_mb ?? 80}MB Limit</span>
+        <span>Up to {apiInfo?.max_upload_mb ?? 80}MB per file</span>
       </footer>
       </div>
     </>

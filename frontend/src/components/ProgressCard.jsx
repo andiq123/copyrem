@@ -10,7 +10,7 @@ export default function ProgressCard({ percent, onCancel }) {
         <button 
           onClick={onCancel}
           style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', padding: 0 }}
-          aria-label="Abort Task"
+          aria-label="Cancel"
           className="hover-opacity"
         >
           <XCircle size={16} />

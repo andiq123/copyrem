@@ -66,7 +66,7 @@ export default function Dropzone({ file, accept, disabled, onFile, inputRef }) {
             <div className="filename-display">{file.name}</div>
           ) : (
             <>
-              <div>Drop source file</div>
+              <div>Drop audio here</div>
               <div className="brand-tag" style={{ marginTop: '4px', fontSize: '0.65rem' }}>or click to browse</div>
             </>
           )}

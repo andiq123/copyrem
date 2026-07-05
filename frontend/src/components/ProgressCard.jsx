@@ -2,18 +2,13 @@ import { XCircle } from 'lucide-react'
 
 export default function ProgressCard({ percent, onCancel }) {
   return (
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.5rem' }} role="status" aria-live="polite">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <p className="intensity-title" style={{ margin: 0 }}>
-          Processing… <span style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)', marginLeft: '0.5rem' }}>{percent}%</span>
+    <div className="progress-card" role="status" aria-live="polite">
+      <div className="progress-header">
+        <p className="progress-label">
+          Processing… <span className="progress-pct">{percent}%</span>
         </p>
-        <button 
-          onClick={onCancel}
-          style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', padding: 0 }}
-          aria-label="Cancel"
-          className="hover-opacity"
-        >
-          <XCircle size={16} />
+        <button type="button" className="btn-icon" onClick={onCancel} aria-label="Cancel">
+          <XCircle size={18} aria-hidden="true" />
         </button>
       </div>
       <div
@@ -29,4 +24,3 @@ export default function ProgressCard({ percent, onCancel }) {
     </div>
   )
 }
-

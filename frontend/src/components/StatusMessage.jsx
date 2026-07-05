@@ -5,7 +5,7 @@ export default function StatusMessage({ message, isError }) {
 
   return (
     <div className={`status-block ${isError ? 'is-error' : 'is-success'}`} role="alert" aria-live="assertive">
-      <span className="status-icon" style={{ display: 'flex', alignItems: 'center' }}>
+      <span className="status-icon">
         {isError ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}
       </span>
       <span>{message}</span>

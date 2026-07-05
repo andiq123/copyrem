@@ -53,25 +53,23 @@ export default function Dropzone({ file, accept, disabled, onFile, inputRef }) {
       />
       <label
         htmlFor="file"
-        className={`dropzone-container ${file ? 'is-active' : ''} ${disabled ? 'disabled' : ''}`}
+        className={`dropzone ${file ? 'has-file' : ''} ${disabled ? 'is-disabled' : ''}`}
         onDrop={onDrop}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
       >
-        <div className="dropzone-icon">
-          <UploadCloud size={44} strokeWidth={1} style={{ filter: 'drop-shadow(0 0 10px var(--accent-glow))', color: 'var(--accent)' }} />
-        </div>
-        <div className="dropzone-text">
-          {file ? (
-            <div className="filename-display">{file.name}</div>
-          ) : (
-            <>
-              <div>Drop audio here</div>
-              <div className="brand-tag" style={{ marginTop: '4px', fontSize: '0.65rem' }}>or click to browse</div>
-            </>
-          )}
-        </div>
-        {file && <div className="brand-tag" style={{ marginTop: '0.5rem', opacity: 0.5 }}>{formatSize(file.size)}</div>}
+        <UploadCloud className="dropzone-icon" size={36} strokeWidth={1.5} aria-hidden="true" />
+        {file ? (
+          <>
+            <span className="dropzone-filename">{file.name}</span>
+            <span className="dropzone-meta">{formatSize(file.size)}</span>
+          </>
+        ) : (
+          <>
+            <span className="dropzone-label">Drop audio here</span>
+            <span className="dropzone-hint">MP3, M4A, WAV, FLAC, AAC, OGG</span>
+          </>
+        )}
       </label>
     </>
   )

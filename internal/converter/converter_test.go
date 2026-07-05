@@ -30,11 +30,16 @@ func TestBuildArgsPerturbationRanges(t *testing.T) {
 	}
 
 	st, pace := effectiveWarp(cfg, 2.5)
-	if st < 1.4 {
-		t.Errorf("max semitones %v, want >=1.4 (outside ±0.6 grid)", st)
+	if math.Abs(st) < 2.4 {
+		t.Errorf("max semitones %v, want |st|>=2.4", st)
 	}
-	if pace > 0.70 {
-		t.Errorf("max pace %v, want <=0.70 (outside 0.75 tempo grid)", pace)
+	if pace > 0.52 {
+		t.Errorf("max pace %v, want <=0.52", pace)
+	}
+
+	max := afArg(buildArgs(cfg, "in.mp3", "out.mp3", 2.5))
+	if !strings.Contains(max, "aresample=32000") {
+		t.Error("max intensity should include 32k downsample bounce")
 	}
 }
 
@@ -59,6 +64,9 @@ func TestEffectiveWarpOutsideDetectGrid(t *testing.T) {
 	}
 	if pace >= 0.75-0.02 {
 		t.Fatalf("pace %v still inside 0.75 tempo floor", pace)
+	}
+	if st > 0 {
+		t.Fatalf("hardcore mode pitches down, got +%v st", st)
 	}
 }
 

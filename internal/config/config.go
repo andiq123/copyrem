@@ -15,8 +15,8 @@ func Defaults() Params {
 		Bitrate:        "192k",
 		SampleRate:     44100,
 		Channels:       2,
-		PitchSemitones: 1.5, // > detect grid ±0.6
-		TempoFactor:    0.65, // < detect grid 0.75
-		Drive:          0.5,
+		PitchSemitones: -2.5, // pitch down at max — outside ±0.6 grid
+		TempoFactor:    0.43,
+		Drive:          0.6,
 	}
 }

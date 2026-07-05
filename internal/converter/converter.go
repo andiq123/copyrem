@@ -155,25 +155,35 @@ func buildArgs(cfg config.Params, input, output string, intensity float64) []str
 	tail := fmt.Sprintf("volume=%.3f,acompressor=threshold=-18dB:ratio=2.5:attack=15:release=180,alimiter=limit=0.97", drive)
 
 	var filter string
+	var inputArgs []string
 	if t == 0 {
-		// ponytail: skip resample/pitch at 50% — identity warp is wasted CPU
 		filter = tail
 	} else {
 		p := math.Pow(2, semitones/12)
-		// ponytail: EQ + band trim not in detect warp grid; scale with intensity
+		downsample := ""
+		if t >= 0.75 {
+			// ponytail: 32k round-trip kills highs the warp grid never models
+			downsample = fmt.Sprintf("aresample=32000,aresample=%d,", sr)
+		}
 		spectral := fmt.Sprintf(
-			"highpass=f=%d,lowpass=f=%d,equalizer=f=1000:t=q:w=1.5:g=%.1f,",
-			int(80+t*100), int(16000-t*2500), -t*3,
+			"highpass=f=%d,lowpass=f=%d,equalizer=f=800:t=q:w=1.2:g=%.1f,equalizer=f=3500:t=q:w=2:g=%.1f,%s",
+			int(100+t*150), int(17000-t*5000), -t*5, t*2.5, downsample,
 		)
 		filter = fmt.Sprintf(
 			"aresample=%d:filter_size=32,asetrate=%d*%.6f,aresample=%d:filter_size=32,%s%s%s",
 			sr, sr, p, sr, atempoChain((1/p)*tempo), spectral, tail,
 		)
+		if skip := t * 0.5; skip >= 0.05 {
+			inputArgs = []string{"-ss", fmt.Sprintf("%.3f", skip)}
+		}
 	}
 
-	return []string{
+	out := []string{
 		"-y", "-nostdin", "-hide_banner", "-loglevel", "error",
 		"-threads", "0",
+	}
+	out = append(out, inputArgs...)
+	out = append(out,
 		"-i", input,
 		"-vn", "-sn", "-dn",
 		"-map_metadata", "-1",
@@ -184,5 +194,6 @@ func buildArgs(cfg config.Params, input, output string, intensity float64) []str
 		"-ar", strconv.Itoa(cfg.SampleRate),
 		"-ac", strconv.Itoa(cfg.Channels),
 		output,
-	}
+	)
+	return out
 }

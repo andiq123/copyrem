@@ -19,7 +19,7 @@ func Defaults() Params {
 		Channels:       2,
 		TempoFactor:    0.90,
 		PitchSemitones: 0.25,
-		ResampleRates:  []int{48000, 96000, 48000},
+		ResampleRates:  []int{48000},
 		DelayLeftMs:    1,
 		DelayRightMs:   8,
 	}

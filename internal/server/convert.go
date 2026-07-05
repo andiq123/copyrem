@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -14,6 +15,9 @@ import (
 	"copyrem/internal/config"
 	"copyrem/internal/converter"
 )
+
+// convertSem bounds concurrent ffmpeg jobs to CPU count; extra jobs queue.
+var convertSem = make(chan struct{}, max(1, runtime.NumCPU()))
 
 func ConvertHandler(cfg config.Params, store *JobStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -38,6 +42,16 @@ func ConvertHandler(cfg config.Params, store *JobStore) http.HandlerFunc {
 		}
 
 		go func() {
+			// Cap concurrent ffmpeg jobs to CPU count so each runs at full
+			// speed instead of N jobs thrashing. Cancelled-while-queued exits fast.
+			select {
+			case convertSem <- struct{}{}:
+				defer func() { <-convertSem }()
+			case <-job.Ctx.Done():
+				_ = os.Remove(inPath)
+				return
+			}
+
 			err := converter.ConvertWithProgress(job.Ctx, cfg, inPath, outPath, intensity, func(pct int) {
 				store.SetPercent(job.ID, pct)
 			})

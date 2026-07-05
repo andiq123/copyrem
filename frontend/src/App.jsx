@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Download } from 'lucide-react'
 import { useWebHaptics } from 'web-haptics/react'
 import useConverter, { MAX_UPLOAD_MB } from './hooks/useConverter'
+import { previewUrlForFile } from './utils/formatSize'
 import Dropzone from './components/Dropzone'
 import ProgressCard from './components/ProgressCard'
 import StatusMessage from './components/StatusMessage'
@@ -27,7 +28,7 @@ export default function App() {
       setOriginalUrl(null)
       return
     }
-    const url = URL.createObjectURL(file)
+    const url = previewUrlForFile(file)
     setOriginalUrl(url)
     return () => URL.revokeObjectURL(url)
   }, [file])

@@ -17,7 +17,7 @@ export default function AudioPreview({ src, title, badge, active }) {
   const toggle = useCallback(() => {
     const a = audioRef.current
     if (!a) return
-    if (a.paused) a.play()
+    if (a.paused) void a.play().catch(() => setPlaying(false))
     else a.pause()
   }, [])
 

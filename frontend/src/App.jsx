@@ -1,8 +1,7 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { Download } from 'lucide-react'
 import { useWebHaptics } from 'web-haptics/react'
 import useConverter, { MAX_UPLOAD_MB } from './hooks/useConverter'
-import { previewUrlForFile } from './utils/formatSize'
 import Dropzone from './components/Dropzone'
 import ProgressCard from './components/ProgressCard'
 import StatusMessage from './components/StatusMessage'
@@ -13,25 +12,15 @@ import AudioPreview from './components/AudioPreview'
 export default function App() {
   const haptic = useWebHaptics()
   const fileInputRef = useRef(null)
-  const [originalUrl, setOriginalUrl] = useState(null)
 
   const {
-    file, loading, percent, status, error,
-    downloadUrl, downloadName, accept, canReset,
+    file, loading, percent, status, error, ready,
+    jobId, previewOriginal, previewRemixed, downloadHref, downloadName,
+    accept, canReset,
     pickFile, submit, reset, cancel,
   } = useConverter()
 
   const [intensity, setIntensity] = useState(1.0)
-
-  useEffect(() => {
-    if (!file) {
-      setOriginalUrl(null)
-      return
-    }
-    const url = previewUrlForFile(file)
-    setOriginalUrl(url)
-    return () => URL.revokeObjectURL(url)
-  }, [file])
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -59,14 +48,14 @@ export default function App() {
             inputRef={fileInputRef}
           />
 
-          {originalUrl && !downloadUrl && !loading && (
-            <AudioPreview src={originalUrl} title={file.name} badge="Original" />
+          {previewOriginal && (loading || ready) && (
+            <AudioPreview src={previewOriginal} title={file?.name} badge="Original" />
           )}
 
           <IntensitySlider
             value={intensity}
             onChange={setIntensity}
-            disabled={loading}
+            disabled={loading || ready}
           />
 
           <div className="panel-actions">
@@ -79,31 +68,28 @@ export default function App() {
                 }}
               />
             ) : (
-              <button type="submit" className="btn-primary" disabled={!file}>
-                {downloadUrl ? 'Process again' : 'Process audio'}
+              <button type="submit" className="btn-primary" disabled={!file || ready}>
+                {ready ? 'Done' : 'Process audio'}
               </button>
             )}
           </div>
         </form>
 
-        {(status && !downloadUrl) && !loading && (
+        {(status && !ready) && !loading && (
           <StatusMessage message={status} isError={error} />
         )}
 
-        {downloadUrl && !loading && (
+        {ready && previewRemixed && (
           <div className="preview-stack">
             <p className="preview-heading">Listen before you download</p>
             <AudioPreview
-              src={downloadUrl}
+              src={previewRemixed}
               title={downloadName}
               badge="Remixed"
               active
             />
-            {originalUrl && (
-              <AudioPreview src={originalUrl} title={file.name} badge="Original" />
-            )}
             <a
-              href={downloadUrl}
+              href={downloadHref}
               className="btn-download"
               download={downloadName}
               onClick={() => haptic.trigger('success')}

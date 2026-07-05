@@ -55,8 +55,9 @@ func ConvertHandler(cfg config.Params, store *JobStore) http.HandlerFunc {
 			err := converter.ConvertWithProgress(job.Ctx, cfg, inPath, outPath, intensity, func(pct int) {
 				store.SetPercent(job.ID, pct)
 			})
-			_ = os.Remove(inPath)
 			if err != nil {
+				_ = os.Remove(inPath)
+				_ = os.Remove(outPath)
 				if job.Ctx.Err() == context.Canceled {
 					return
 				}
@@ -114,7 +115,7 @@ func ProgressHandler(store *JobStore) http.HandlerFunc {
 
 				switch j.Status {
 				case JobDone:
-					fmt.Fprint(w, "data: {\"percent\":100,\"done\":true}\n\n")
+					fmt.Fprintf(w, "data: {\"percent\":100,\"done\":true,\"filename\":%q}\n\n", j.OriginalName)
 					flusher.Flush()
 					return
 				case JobFailed:
@@ -169,7 +170,74 @@ func DownloadHandler(store *JobStore) http.HandlerFunc {
 		w.Header().Set("Content-Type", "audio/mpeg")
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", job.OriginalName))
 		http.ServeFile(w, r, job.OutPath)
+	}
+}
 
-		store.Cancel(id)
+func PreviewHandler(store *JobStore) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+
+		rest := strings.TrimPrefix(r.URL.Path, "/convert/preview/")
+		id, kind, ok := strings.Cut(rest, "/")
+		if !ok || id == "" {
+			writeError(w, http.StatusNotFound, "job not found")
+			return
+		}
+
+		job := store.Get(id)
+		if job == nil {
+			writeError(w, http.StatusNotFound, "job not found")
+			return
+		}
+
+		var path string
+		switch kind {
+		case "original":
+			path = job.InPath
+		case "remixed":
+			if job.Status != JobDone {
+				writeError(w, http.StatusConflict, "job not ready")
+				return
+			}
+			path = job.OutPath
+		default:
+			writeError(w, http.StatusNotFound, "not found")
+			return
+		}
+
+		if path == "" {
+			writeError(w, http.StatusNotFound, "file not found")
+			return
+		}
+		if _, err := os.Stat(path); err != nil {
+			writeError(w, http.StatusNotFound, "file not found")
+			return
+		}
+
+		w.Header().Set("Content-Type", audioMIME(path))
+		w.Header().Set("Content-Disposition", "inline")
+		http.ServeFile(w, r, path)
+	}
+}
+
+func audioMIME(path string) string {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".mp3":
+		return "audio/mpeg"
+	case ".m4a":
+		return "audio/mp4"
+	case ".wav":
+		return "audio/wav"
+	case ".flac":
+		return "audio/flac"
+	case ".aac":
+		return "audio/aac"
+	case ".ogg":
+		return "audio/ogg"
+	default:
+		return "audio/mpeg"
 	}
 }

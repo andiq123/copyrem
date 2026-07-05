@@ -12,7 +12,8 @@ export default function useConverter() {
   const [percent, setPercent] = useState(0)
   const [status, setStatus] = useState(null)
   const [error, setError] = useState(false)
-  const [downloadUrl, setDownloadUrl] = useState(null)
+  const [jobId, setJobId] = useState(null)
+  const [ready, setReady] = useState(false)
   const [downloadName, setDownloadName] = useState(null)
   const esRef = useRef(null)
   const jobIdRef = useRef(null)
@@ -38,10 +39,7 @@ export default function useConverter() {
     setStatus(null)
     setError(false)
     setPercent(0)
-    setDownloadUrl((u) => {
-      if (u) URL.revokeObjectURL(u)
-      return null
-    })
+    setReady(false)
     setDownloadName(null)
   }, [])
 
@@ -51,6 +49,7 @@ export default function useConverter() {
     }
     closeES()
     jobIdRef.current = null
+    setJobId(null)
   }, [closeES])
 
   const fail = useCallback((msg) => {
@@ -59,13 +58,15 @@ export default function useConverter() {
     setStatus(msg)
     setError(true)
     setLoading(false)
+    setReady(false)
   }, [stopJob, haptic])
 
   const pickFile = useCallback((f) => {
     if (!f) return
     setFile(f)
+    stopJob()
     clearState()
-  }, [clearState])
+  }, [clearState, stopJob])
 
   const cancel = useCallback(() => {
     stopJob()
@@ -84,6 +85,7 @@ export default function useConverter() {
     if (!file) return
 
     closeES()
+    stopJob()
     setLoading(true)
     clearState()
 
@@ -99,11 +101,12 @@ export default function useConverter() {
       }
       const { job_id } = await res.json()
       jobIdRef.current = job_id
+      setJobId(job_id)
 
       const es = new EventSource(`/convert/progress/${job_id}`)
       esRef.current = es
 
-      es.onmessage = async (event) => {
+      es.onmessage = (event) => {
         const msg = JSON.parse(event.data)
         setPercent(msg.percent || 0)
 
@@ -112,22 +115,13 @@ export default function useConverter() {
         if (msg.done) {
           closeES()
           setPercent(100)
-          try {
-            const dl = await fetch(`/convert/download/${job_id}`)
-            if (!dl.ok) throw new Error('Download failed')
-            const blob = await dl.blob()
-            const disp = dl.headers.get('Content-Disposition')
-            const match = disp?.match(/filename="?([^";]+)"?/)
-            setDownloadUrl(URL.createObjectURL(blob))
-            setDownloadName(match?.[1]?.trim() || `audio${SUFFIX}`)
-            setStatus('Ready — preview your track below.')
-            setLoading(false)
-            jobIdRef.current = null
-            haptic.trigger('success')
-            setTimeout(() => haptic.trigger('heavy'), 120)
-          } catch {
-            fail('Download didn\u2019t complete. Try again.')
-          }
+          setDownloadName(msg.filename?.trim() || `audio${SUFFIX}`)
+          setStatus('Ready — preview your track below.')
+          setReady(true)
+          setLoading(false)
+          jobIdRef.current = null
+          haptic.trigger('success')
+          setTimeout(() => haptic.trigger('heavy'), 120)
         }
       }
 
@@ -135,12 +129,17 @@ export default function useConverter() {
     } catch (err) {
       fail(err.message || 'Something went wrong. Try again.')
     }
-  }, [file, closeES, clearState, fail, haptic])
+  }, [file, closeES, clearState, fail, haptic, stopJob])
+
+  const previewOriginal = jobId ? `/convert/preview/${jobId}/original` : null
+  const previewRemixed = ready && jobId ? `/convert/preview/${jobId}/remixed` : null
+  const downloadHref = ready && jobId ? `/convert/download/${jobId}` : null
 
   return {
-    file, loading, percent, status, error,
-    downloadUrl, downloadName, accept: ACCEPT,
+    file, loading, percent, status, error, ready,
+    jobId, previewOriginal, previewRemixed, downloadHref, downloadName,
+    accept: ACCEPT,
     pickFile, submit, reset, cancel,
-    canReset: !!(file || status || downloadUrl),
+    canReset: !!(file || status || ready),
   }
 }

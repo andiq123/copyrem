@@ -16,6 +16,7 @@ func NewMux(cfg config.Params, staticDir string) *http.ServeMux {
 	mux.HandleFunc("/convert/progress/", ProgressHandler(store))
 	mux.HandleFunc("/convert/cancel/", CancelHandler(store))
 	mux.HandleFunc("/convert/download/", DownloadHandler(store))
+	mux.HandleFunc("/convert/preview/", PreviewHandler(store))
 	mux.Handle("/", http.FileServer(http.Dir(staticDir)))
 
 	return mux

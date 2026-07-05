@@ -35,6 +35,9 @@ func ConvertWithProgress(ctx context.Context, cfg config.Params, input, output s
 	args := buildArgs(cfg, input, output, intensity)
 	if onProgress != nil {
 		args = append([]string{"-progress", "pipe:1"}, args...)
+		if _, pace := effectiveWarp(cfg, intensity); pace > 0 && pace < 1 {
+			totalUs /= pace // output runs longer when tempo slows
+		}
 	}
 
 	cmd := exec.CommandContext(ctx, binary, args...)
@@ -55,6 +58,7 @@ func ConvertWithProgress(ctx context.Context, cfg config.Params, input, output s
 
 	if onProgress != nil && stdout != nil {
 		trackProgress(stdout, totalUs, onProgress)
+		_ = stdout.Close()
 	}
 
 	if err := cmd.Wait(); err != nil {
@@ -66,9 +70,6 @@ func ConvertWithProgress(ctx context.Context, cfg config.Params, input, output s
 		}
 		return fmt.Errorf("ffmpeg: %w", err)
 	}
-	if onProgress != nil {
-		onProgress(100)
-	}
 	return nil
 }
 
@@ -76,9 +77,17 @@ func trackProgress(stdout io.ReadCloser, totalUs float64, onProgress func(int)) 
 	scanner := bufio.NewScanner(stdout)
 	lastPct := 0
 	lastReport := time.Time{}
+	done := false
 
 	for scanner.Scan() {
 		text := scanner.Text()
+		if text == "progress=end" {
+			if !done {
+				onProgress(100)
+				done = true
+			}
+			continue
+		}
 		if !strings.HasPrefix(text, "out_time_us=") {
 			continue
 		}
@@ -96,6 +105,9 @@ func trackProgress(stdout io.ReadCloser, totalUs float64, onProgress func(int)) 
 			lastReport = now
 			onProgress(pct)
 		}
+	}
+	if !done {
+		onProgress(100)
 	}
 }
 

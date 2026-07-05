@@ -1,12 +1,12 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useWebHaptics } from 'web-haptics/react'
 
-const FALLBACK_ACCEPT = '.mp3,.m4a,.wav,.flac,.aac,.ogg'
-const FALLBACK_SUFFIX = '_modified.mp3'
+const ACCEPT = '.mp3,.m4a,.wav,.flac,.aac,.ogg'
+const SUFFIX = '_modified.mp3'
+export const MAX_UPLOAD_MB = 80
 
 export default function useConverter() {
   const haptic = useWebHaptics()
-  const [apiInfo, setApiInfo] = useState(null)
   const [file, setFile] = useState(null)
   const [loading, setLoading] = useState(false)
   const [percent, setPercent] = useState(0)
@@ -16,13 +16,6 @@ export default function useConverter() {
   const [downloadName, setDownloadName] = useState(null)
   const esRef = useRef(null)
   const jobIdRef = useRef(null)
-
-  useEffect(() => {
-    fetch('/api/info')
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => data && setApiInfo(data))
-      .catch(() => {})
-  }, [])
 
   useEffect(() => {
     const onUnload = () => {
@@ -126,7 +119,7 @@ export default function useConverter() {
             const disp = dl.headers.get('Content-Disposition')
             const match = disp?.match(/filename="?([^";]+)"?/)
             setDownloadUrl(URL.createObjectURL(blob))
-            setDownloadName(match?.[1]?.trim() || `audio${apiInfo?.download_suffix || FALLBACK_SUFFIX}`)
+            setDownloadName(match?.[1]?.trim() || `audio${SUFFIX}`)
             setStatus('Ready. Same sound, different fingerprint.')
             setLoading(false)
             jobIdRef.current = null
@@ -142,13 +135,11 @@ export default function useConverter() {
     } catch (err) {
       fail(err.message || 'Something went wrong. Try again.')
     }
-  }, [file, apiInfo?.download_suffix, closeES, clearState, fail, haptic])
-
-  const accept = apiInfo?.allowed_extensions?.join(',') ?? FALLBACK_ACCEPT
+  }, [file, closeES, clearState, fail, haptic])
 
   return {
-    apiInfo, file, loading, percent, status, error,
-    downloadUrl, downloadName, accept,
+    file, loading, percent, status, error,
+    downloadUrl, downloadName, accept: ACCEPT,
     pickFile, submit, reset, cancel,
     canReset: !!(file || status || downloadUrl),
   }

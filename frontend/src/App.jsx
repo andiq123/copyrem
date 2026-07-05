@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { Zap, Download, CheckCircle2 } from 'lucide-react'
 import { useWebHaptics } from 'web-haptics/react'
-import useConverter from './hooks/useConverter'
+import useConverter, { MAX_UPLOAD_MB } from './hooks/useConverter'
 import Dropzone from './components/Dropzone'
 import ProgressCard from './components/ProgressCard'
 import StatusMessage from './components/StatusMessage'
@@ -13,7 +13,7 @@ export default function App() {
   const fileInputRef = useRef(null)
   
   const {
-    apiInfo, file, loading, percent, status, error,
+    file, loading, percent, status, error,
     downloadUrl, downloadName, accept, canReset,
     pickFile, submit, reset, cancel,
   } = useConverter()
@@ -24,7 +24,6 @@ export default function App() {
   const handleSubmit = (e) => {
     e.preventDefault()
     haptic.trigger([40, 35, 90])
-    // Note: Future backend update needed to accept style, morph, texture
     submit(intensity)
   }
 
@@ -138,7 +137,7 @@ export default function App() {
       <footer className="info-footer">
         <span>Free, no signup</span>
         <span className="dot">•</span>
-        <span>Up to {apiInfo?.max_upload_mb ?? 80}MB per file</span>
+        <span>Up to {MAX_UPLOAD_MB}MB per file</span>
       </footer>
       </div>
     </>

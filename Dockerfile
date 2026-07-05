@@ -20,6 +20,5 @@ RUN apk add --no-cache ffmpeg ca-certificates
 WORKDIR /app
 COPY --from=build /copyrem /app/copyrem
 COPY --from=build /src/frontend/dist /app/frontend/dist
-COPY --from=build /src/settings.json /app/settings.json
 EXPOSE 8080
 CMD ["/app/copyrem"]

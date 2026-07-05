@@ -21,9 +21,9 @@ func ConvertHandler(cfg config.Params, store *JobStore) http.HandlerFunc {
 			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
-		inPath, baseName, err := ParseUpload(w, r)
+		inPath, baseName, status, err := ParseUpload(w, r)
 		if err != nil {
-			writeError(w, uploadStatus(err), err.Error())
+			writeError(w, status, err.Error())
 			return
 		}
 		dir := filepath.Dir(inPath)
@@ -38,7 +38,6 @@ func ConvertHandler(cfg config.Params, store *JobStore) http.HandlerFunc {
 		}
 
 		go func() {
-			store.SetRunning(job.ID)
 			err := converter.ConvertWithProgress(job.Ctx, cfg, inPath, outPath, intensity, func(pct int) {
 				store.SetPercent(job.ID, pct)
 			})

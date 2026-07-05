@@ -12,10 +12,9 @@ import (
 type JobStatus string
 
 const (
-	JobPending   JobStatus = "pending"
-	JobRunning   JobStatus = "running"
-	JobDone      JobStatus = "done"
-	JobFailed JobStatus = "failed"
+	JobRunning JobStatus = "running"
+	JobDone    JobStatus = "done"
+	JobFailed  JobStatus = "failed"
 
 	jobTTL          = 5 * time.Minute
 	jobCleanupEvery = 30 * time.Second
@@ -49,7 +48,7 @@ func (s *JobStore) Create(inPath, outPath, originalName string) *Job {
 	ctx, cancel := context.WithCancel(context.Background())
 	j := &Job{
 		ID:           randHex(8),
-		Status:       JobPending,
+		Status:       JobRunning,
 		InPath:       inPath,
 		OutPath:      outPath,
 		OriginalName: originalName,
@@ -67,14 +66,6 @@ func (s *JobStore) Get(id string) *Job {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.jobs[id]
-}
-
-func (s *JobStore) SetRunning(id string) {
-	s.mu.Lock()
-	if j := s.jobs[id]; j != nil {
-		j.Status = JobRunning
-	}
-	s.mu.Unlock()
 }
 
 func (s *JobStore) SetPercent(id string, pct int) {

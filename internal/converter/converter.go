@@ -74,7 +74,6 @@ func ConvertWithProgress(ctx context.Context, cfg config.Params, input, output s
 
 func trackProgress(stdout io.ReadCloser, totalUs float64, onProgress func(int)) {
 	scanner := bufio.NewScanner(stdout)
-	scanner.Buffer(make([]byte, 256), 256)
 	lastPct := 0
 	lastReport := time.Time{}
 

@@ -1,7 +1,6 @@
 package server
 
 import (
-	_ "embed"
 	"net/http"
 	"os"
 	"strings"
@@ -9,36 +8,15 @@ import (
 	"copyrem/internal/config"
 )
 
-//go:embed static/build.html
-var buildHTML []byte
-
 func NewMux(cfg config.Params, staticDir string) *http.ServeMux {
 	mux := http.NewServeMux()
 	store := NewJobStore()
 
-	mux.HandleFunc("/api/info", InfoHandler())
 	mux.HandleFunc("/convert", RateLimitConvert(ConvertHandler(cfg, store)))
 	mux.HandleFunc("/convert/progress/", ProgressHandler(store))
 	mux.HandleFunc("/convert/cancel/", CancelHandler(store))
 	mux.HandleFunc("/convert/download/", DownloadHandler(store))
-
-	var staticHandler http.Handler
-	if staticDir != "" {
-		if info, err := os.Stat(staticDir); err == nil && info.IsDir() {
-			staticHandler = http.FileServer(http.Dir(staticDir))
-		}
-	}
-	if staticHandler == nil {
-		staticHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == "/" || r.URL.Path == "/index.html" {
-				w.Header().Set("Content-Type", "text/html; charset=utf-8")
-				w.Write(buildHTML)
-				return
-			}
-			http.NotFound(w, r)
-		})
-	}
-	mux.Handle("/", staticHandler)
+	mux.Handle("/", http.FileServer(http.Dir(staticDir)))
 
 	return mux
 }
@@ -47,13 +25,13 @@ func Chain(next http.Handler) http.Handler {
 	return SecurityHeaders(CORS(next))
 }
 
-func AllowedOriginsForCORS() map[string]bool {
+func allowedOrigins() map[string]bool {
 	origins := map[string]bool{
-		"http://localhost:5173":  true,
+		"http://localhost:5173": true,
 		"http://127.0.0.1:5173": true,
 	}
 	if s := os.Getenv("CORS_ORIGINS"); s != "" {
-		for _, o := range strings.Split(s, ",") {
+		for o := range strings.SplitSeq(s, ",") {
 			if o = strings.TrimSpace(o); o != "" {
 				origins[o] = true
 			}
@@ -63,7 +41,7 @@ func AllowedOriginsForCORS() map[string]bool {
 }
 
 func CORS(next http.Handler) http.Handler {
-	allowed := AllowedOriginsForCORS()
+	allowed := allowedOrigins()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		if origin != "" && allowed[origin] {

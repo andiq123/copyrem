@@ -58,7 +58,7 @@ export default function Dropzone({ file, accept, disabled, onFile, inputRef }) {
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
       >
-        <UploadCloud className="dropzone-icon" size={36} strokeWidth={1.5} aria-hidden="true" />
+        <UploadCloud className="dropzone-icon" size={28} strokeWidth={1.5} aria-hidden="true" />
         {file ? (
           <>
             <span className="dropzone-filename">{file.name}</span>

@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Zap, Download, CheckCircle2 } from 'lucide-react'
+import { Download, CheckCircle2 } from 'lucide-react'
 import { useWebHaptics } from 'web-haptics/react'
 import useConverter, { MAX_UPLOAD_MB } from './hooks/useConverter'
 import Dropzone from './components/Dropzone'
@@ -33,13 +33,7 @@ export default function App() {
   }
 
   return (
-    <>
-      <div className="ambient-bg" aria-hidden="true">
-        <div className="orb orb-1" />
-        <div className="orb orb-2" />
-      </div>
-
-      <div className="app-container" aria-busy={loading} aria-live="polite">
+    <div className="app-container" aria-busy={loading} aria-live="polite">
         <Branding />
 
         <main className="panel">
@@ -68,13 +62,8 @@ export default function App() {
                   }}
                 />
               ) : (
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  disabled={!file}
-                >
-                  <Zap size={20} aria-hidden="true" />
-                  <span>Process and download</span>
+                <button type="submit" className="btn-primary" disabled={!file}>
+                  Process and download
                 </button>
               )}
             </div>
@@ -116,7 +105,6 @@ export default function App() {
           <span className="dot" aria-hidden="true">·</span>
           <span>Up to {MAX_UPLOAD_MB}MB per file</span>
         </footer>
-      </div>
-    </>
+    </div>
   )
 }

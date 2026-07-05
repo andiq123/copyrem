@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"math"
 	"strconv"
 	"strings"
 	"testing"
@@ -18,8 +19,8 @@ func TestBuildArgsPerturbationRanges(t *testing.T) {
 
 	for _, intensity := range []float64{1.0, 1.75, 2.5} {
 		af := afArg(buildArgs(cfg, "in.mp3", "out.mp3", intensity))
-		if !strings.Contains(af, "asetrate=") {
-			t.Fatalf("intensity %v: missing pitch warp: %q", intensity, af)
+		if !strings.Contains(af, "asetrate=") || !strings.Contains(af, "highpass=") {
+			t.Fatalf("intensity %v: missing warp/spectral stages: %q", intensity, af)
 		}
 		for _, tempo := range allNums(af, "atempo=") {
 			if tempo < 0.5 || tempo > 2.0 {
@@ -28,14 +29,12 @@ func TestBuildArgsPerturbationRanges(t *testing.T) {
 		}
 	}
 
-	max := afArg(buildArgs(cfg, "in.mp3", "out.mp3", 2.5))
-	pitch := num(t, max, "asetrate=44100*")
-	if pitch < 1.05 {
-		t.Errorf("max pitch factor %v, want >1.05 (~1 semitone up)", pitch)
+	st, pace := effectiveWarp(cfg, 2.5)
+	if st < 1.4 {
+		t.Errorf("max semitones %v, want >=1.4 (outside ±0.6 grid)", st)
 	}
-	pace := (1 / pitch) * 0.72
-	if pace > 0.75 {
-		t.Errorf("effective tempo %v, want <=0.75 to beat detect warp grid", pace)
+	if pace > 0.70 {
+		t.Errorf("max pace %v, want <=0.70 (outside 0.75 tempo grid)", pace)
 	}
 }
 
@@ -48,6 +47,18 @@ func TestAtempoChain(t *testing.T) {
 	}
 	if got := atempoChain(0.25); strings.Count(got, "atempo=") != 2 {
 		t.Fatalf("split hop: %q", got)
+	}
+}
+
+func TestEffectiveWarpOutsideDetectGrid(t *testing.T) {
+	cfg := config.Defaults()
+	st, pace := effectiveWarp(cfg, 2.5)
+	// detect.go warpGrid: ±0.6 st, tempo 0.75–1.0
+	if math.Abs(st) <= 0.6+0.05 {
+		t.Fatalf("pitch %v still inside ±0.6 grid", st)
+	}
+	if pace >= 0.75-0.02 {
+		t.Fatalf("pace %v still inside 0.75 tempo floor", pace)
 	}
 }
 

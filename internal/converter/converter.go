@@ -123,6 +123,15 @@ func atempoChain(factor float64) string {
 	return strings.Join(filters, ",") + ","
 }
 
+// effectiveWarp returns pitch (semitones) and playback pace at intensity.
+func effectiveWarp(cfg config.Params, intensity float64) (semitones, pace float64) {
+	t := min(max((intensity-0.5)/2.0, 0), 1)
+	semitones = t * cfg.PitchSemitones
+	tempo := 1.0 - t*(1.0-cfg.TempoFactor)
+	p := math.Pow(2, semitones/12)
+	return semitones, (1 / p) * tempo
+}
+
 func buildArgs(cfg config.Params, input, output string, intensity float64) []string {
 	t := min(max((intensity-0.5)/2.0, 0), 1)
 
@@ -139,9 +148,14 @@ func buildArgs(cfg config.Params, input, output string, intensity float64) []str
 		filter = tail
 	} else {
 		p := math.Pow(2, semitones/12)
+		// ponytail: EQ + band trim not in detect warp grid; scale with intensity
+		spectral := fmt.Sprintf(
+			"highpass=f=%d,lowpass=f=%d,equalizer=f=1000:t=q:w=1.5:g=%.1f,",
+			int(80+t*100), int(16000-t*2500), -t*3,
+		)
 		filter = fmt.Sprintf(
-			"aresample=%d:filter_size=32,asetrate=%d*%.6f,aresample=%d:filter_size=32,%s%s",
-			sr, sr, p, sr, atempoChain((1/p)*tempo), tail,
+			"aresample=%d:filter_size=32,asetrate=%d*%.6f,aresample=%d:filter_size=32,%s%s%s",
+			sr, sr, p, sr, atempoChain((1/p)*tempo), spectral, tail,
 		)
 	}
 

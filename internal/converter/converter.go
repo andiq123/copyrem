@@ -99,44 +99,25 @@ func trackProgress(stdout io.ReadCloser, totalUs float64, onProgress func(int)) 
 	}
 }
 
+// buildArgs assembles a lo-fi ffmpeg filter chain. The intensity slider
+// (0.5 subtle … 2.5 heavy) scales every knob: fewer bits, coarser sample-hold,
+// lower muffle cutoff and deeper tape wow all push harder as it climbs.
 func buildArgs(cfg config.Params, input, output string, intensity float64) []string {
-	sr := cfg.SampleRate
-	p := math.Pow(2, (cfg.PitchSemitones*intensity)/12)
+	bits := min(max(cfg.CrushBits-(intensity-1)*3, 4), 16)              // fewer bits = more crush
+	hold := min(max(int(math.Round(float64(cfg.SampleHold)*intensity)), 1), 8)
+	lowpass := min(max(int(float64(cfg.LowpassHz)/intensity), 800), 12000) // lower = more muffled
+	wow := min(max(cfg.WowDepth*intensity, 0), 0.6)
 
-	pitch := fmt.Sprintf("asetrate=%d*%.6f,aresample=%d,atempo=%.6f", sr, p, sr, 1/p)
-
-	// Scale tempo: if TempoFactor < 1, higher intensity makes it slower
-	var tf float64
-	if cfg.TempoFactor < 1.0 {
-		tf = 1.0 - (1.0-cfg.TempoFactor)*intensity
-	} else {
-		tf = 1.0 + (cfg.TempoFactor-1.0)*intensity
-	}
-	// Clamp tempo to ffmpeg limits (0.5 to 2.0 per atempo filter)
-	tf = math.Max(0.5, math.Min(2.0, tf))
-	tempo := fmt.Sprintf("atempo=%.4f", tf)
-
-	var resample []string
-	for _, r := range cfg.ResampleRates {
-		resample = append(resample, fmt.Sprintf("aresample=%d", r))
-	}
-	resample = append(resample, fmt.Sprintf("aresample=%d", sr))
-
-	delayL := int(float64(cfg.DelayLeftMs) * intensity)
-	delayR := int(float64(cfg.DelayRightMs) * intensity)
-	delay := fmt.Sprintf("adelay=%d|%d", delayL, delayR)
-
-	parts := make([]string, 0, 2+len(resample)+1)
-	parts = append(parts, pitch, tempo)
-	parts = append(parts, resample...)
-	parts = append(parts, delay)
-	filter := strings.Join(parts, ",")
+	filter := fmt.Sprintf(
+		"acrusher=bits=%.1f:mode=log:samples=%d,highpass=f=%d,lowpass=f=%d,vibrato=f=6:d=%.3f",
+		bits, hold, cfg.HighpassHz, lowpass, wow,
+	)
 
 	return []string{
 		"-y", "-i", input,
 		"-af", filter,
 		"-b:a", cfg.Bitrate,
-		"-ar", strconv.Itoa(sr),
+		"-ar", strconv.Itoa(cfg.SampleRate),
 		"-ac", strconv.Itoa(cfg.Channels),
 		output,
 	}

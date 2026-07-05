@@ -99,18 +99,22 @@ func trackProgress(stdout io.ReadCloser, totalUs float64, onProgress func(int)) 
 	}
 }
 
-// buildArgs assembles a lo-fi ffmpeg filter chain. The intensity slider
-// (0.5 subtle … 2.5 heavy) scales every knob: fewer bits, coarser sample-hold,
-// lower muffle cutoff and deeper tape wow all push harder as it climbs.
+// buildArgs warps pitch/tempo and adds gentle saturation. Intensity 0.5 is
+// nearly transparent; 2.5 lands outside the ±0.6 st / 0.75 tempo warp grid
+// used by typical Chromaprint matchers.
 func buildArgs(cfg config.Params, input, output string, intensity float64) []string {
-	bits := min(max(cfg.CrushBits-(intensity-1)*3, 4), 16)              // fewer bits = more crush
-	hold := min(max(int(math.Round(float64(cfg.SampleHold)*intensity)), 1), 8)
-	lowpass := min(max(int(float64(cfg.LowpassHz)/intensity), 800), 12000) // lower = more muffled
-	wow := min(max(cfg.WowDepth*intensity, 0), 0.6)
+	t := min(max((intensity-0.5)/2.0, 0), 1)
+
+	semitones := t * cfg.PitchSemitones
+	tempo := 1.0 - t*(1.0-cfg.TempoFactor)
+	drive := 1.0 + t*cfg.Drive
+
+	p := math.Pow(2, semitones/12)
+	sr := cfg.SampleRate
 
 	filter := fmt.Sprintf(
-		"acrusher=bits=%.1f:mode=log:samples=%d,highpass=f=%d,lowpass=f=%d,vibrato=f=6:d=%.3f",
-		bits, hold, cfg.HighpassHz, lowpass, wow,
+		"aresample=%d,asetrate=%d*%.6f,aresample=%d,atempo=%.6f,atempo=%.6f,volume=%.3f,acompressor=threshold=-18dB:ratio=2.5:attack=15:release=180,alimiter=limit=0.97",
+		sr, sr, p, sr, 1/p, tempo, drive,
 	)
 
 	return []string{

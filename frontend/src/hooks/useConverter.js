@@ -120,7 +120,7 @@ export default function useConverter() {
             const match = disp?.match(/filename="?([^";]+)"?/)
             setDownloadUrl(URL.createObjectURL(blob))
             setDownloadName(match?.[1]?.trim() || `audio${SUFFIX}`)
-            setStatus('Ready. Fingerprint remixed.')
+            setStatus('Ready — preview your track below.')
             setLoading(false)
             jobIdRef.current = null
             haptic.trigger('success')

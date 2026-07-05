@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react'
-import { Download, CheckCircle2 } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Download } from 'lucide-react'
 import { useWebHaptics } from 'web-haptics/react'
 import useConverter, { MAX_UPLOAD_MB } from './hooks/useConverter'
 import Dropzone from './components/Dropzone'
@@ -7,10 +7,12 @@ import ProgressCard from './components/ProgressCard'
 import StatusMessage from './components/StatusMessage'
 import Branding from './components/Branding'
 import IntensitySlider from './components/IntensitySlider'
+import AudioPreview from './components/AudioPreview'
 
 export default function App() {
   const haptic = useWebHaptics()
   const fileInputRef = useRef(null)
+  const [originalUrl, setOriginalUrl] = useState(null)
 
   const {
     file, loading, percent, status, error,
@@ -19,6 +21,16 @@ export default function App() {
   } = useConverter()
 
   const [intensity, setIntensity] = useState(1.0)
+
+  useEffect(() => {
+    if (!file) {
+      setOriginalUrl(null)
+      return
+    }
+    const url = URL.createObjectURL(file)
+    setOriginalUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [file])
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -34,77 +46,87 @@ export default function App() {
 
   return (
     <div className="app-container" aria-busy={loading} aria-live="polite">
-        <Branding />
+      <Branding />
 
-        <main className="panel">
-          <form onSubmit={handleSubmit} className="panel-stack" noValidate>
-            <Dropzone
-              file={file}
-              accept={accept}
-              disabled={loading}
-              onFile={pickFile}
-              inputRef={fileInputRef}
-            />
+      <main className="panel">
+        <form onSubmit={handleSubmit} className="panel-stack" noValidate>
+          <Dropzone
+            file={file}
+            accept={accept}
+            disabled={loading}
+            onFile={pickFile}
+            inputRef={fileInputRef}
+          />
 
-            <IntensitySlider
-              value={intensity}
-              onChange={setIntensity}
-              disabled={loading}
-            />
-
-            <div className="panel-actions">
-              {loading ? (
-                <ProgressCard
-                  percent={percent}
-                  onCancel={() => {
-                    haptic.trigger('warning')
-                    cancel()
-                  }}
-                />
-              ) : (
-                <button type="submit" className="btn-primary" disabled={!file}>
-                  Process and download
-                </button>
-              )}
-            </div>
-          </form>
-
-          {(status && !downloadUrl) && !loading && (
-            <StatusMessage message={status} isError={error} />
+          {originalUrl && !downloadUrl && !loading && (
+            <AudioPreview src={originalUrl} title={file.name} badge="Original" />
           )}
 
-          {downloadUrl && !loading && (
-            <div className="result-card">
-              <div className="result-header">
-                <CheckCircle2 size={20} className="text-accent" aria-hidden="true" />
-                <span className="result-text">{status}</span>
-              </div>
-              <a
-                href={downloadUrl}
-                className="btn-download"
-                download={downloadName}
-                onClick={() => haptic.trigger('success')}
-              >
-                <Download size={20} aria-hidden="true" />
-                <span>Download MP3</span>
-              </a>
-            </div>
-          )}
+          <IntensitySlider
+            value={intensity}
+            onChange={setIntensity}
+            disabled={loading}
+          />
 
-          {canReset && !loading && (
-            <div className="panel-footer">
-              <button type="button" className="btn-ghost" onClick={handleReset}>
-                Start over
+          <div className="panel-actions">
+            {loading ? (
+              <ProgressCard
+                percent={percent}
+                onCancel={() => {
+                  haptic.trigger('warning')
+                  cancel()
+                }}
+              />
+            ) : (
+              <button type="submit" className="btn-primary" disabled={!file}>
+                {downloadUrl ? 'Process again' : 'Process audio'}
               </button>
-            </div>
-          )}
-        </main>
+            )}
+          </div>
+        </form>
 
-        <footer className="info-footer">
-          <span>Free, no signup</span>
-          <span className="dot" aria-hidden="true">·</span>
-          <span>Up to {MAX_UPLOAD_MB}MB per file</span>
-        </footer>
+        {(status && !downloadUrl) && !loading && (
+          <StatusMessage message={status} isError={error} />
+        )}
+
+        {downloadUrl && !loading && (
+          <div className="preview-stack">
+            <p className="preview-heading">Listen before you download</p>
+            <AudioPreview
+              src={downloadUrl}
+              title={downloadName}
+              badge="Remixed"
+              active
+            />
+            {originalUrl && (
+              <AudioPreview src={originalUrl} title={file.name} badge="Original" />
+            )}
+            <a
+              href={downloadUrl}
+              className="btn-download"
+              download={downloadName}
+              onClick={() => haptic.trigger('success')}
+            >
+              <Download size={18} aria-hidden="true" />
+              Download MP3
+            </a>
+          </div>
+        )}
+
+        {canReset && !loading && (
+          <div className="panel-footer">
+            <button type="button" className="btn-ghost" onClick={handleReset}>
+              Start over
+            </button>
+          </div>
+        )}
+      </main>
+
+      <footer className="info-footer">
+        <span>Free, no signup</span>
+        <span aria-hidden="true">·</span>
+        <span>Up to {MAX_UPLOAD_MB}MB per file</span>
+      </footer>
     </div>
   )
 }

@@ -99,28 +99,62 @@ func trackProgress(stdout io.ReadCloser, totalUs float64, onProgress func(int)) 
 	}
 }
 
-// buildArgs warps pitch/tempo and adds gentle saturation. Intensity 0.5 is
-// nearly transparent; 2.5 lands outside the ±0.6 st / 0.75 tempo warp grid
-// used by typical Chromaprint matchers.
+// atempoChain emits one or more atempo filters; ffmpeg only accepts 0.5–2.0 each.
+func atempoChain(factor float64) string {
+	if math.Abs(factor-1.0) < 1e-4 {
+		return ""
+	}
+	var filters []string
+	f := factor
+	for f < 0.5 || f > 2.0 {
+		step := 0.5
+		if f > 2.0 {
+			step = 2.0
+		}
+		filters = append(filters, fmt.Sprintf("atempo=%.6f", step))
+		f /= step
+	}
+	if math.Abs(f-1.0) >= 1e-4 {
+		filters = append(filters, fmt.Sprintf("atempo=%.6f", f))
+	}
+	if len(filters) == 0 {
+		return ""
+	}
+	return strings.Join(filters, ",") + ","
+}
+
 func buildArgs(cfg config.Params, input, output string, intensity float64) []string {
 	t := min(max((intensity-0.5)/2.0, 0), 1)
 
 	semitones := t * cfg.PitchSemitones
 	tempo := 1.0 - t*(1.0-cfg.TempoFactor)
 	drive := 1.0 + t*cfg.Drive
-
-	p := math.Pow(2, semitones/12)
 	sr := cfg.SampleRate
 
-	filter := fmt.Sprintf(
-		"aresample=%d,asetrate=%d*%.6f,aresample=%d,atempo=%.6f,atempo=%.6f,volume=%.3f,acompressor=threshold=-18dB:ratio=2.5:attack=15:release=180,alimiter=limit=0.97",
-		sr, sr, p, sr, 1/p, tempo, drive,
-	)
+	tail := fmt.Sprintf("volume=%.3f,acompressor=threshold=-18dB:ratio=2.5:attack=15:release=180,alimiter=limit=0.97", drive)
+
+	var filter string
+	if t == 0 {
+		// ponytail: skip resample/pitch at 50% — identity warp is wasted CPU
+		filter = tail
+	} else {
+		p := math.Pow(2, semitones/12)
+		filter = fmt.Sprintf(
+			"aresample=%d:filter_size=32,asetrate=%d*%.6f,aresample=%d:filter_size=32,%s%s",
+			sr, sr, p, sr, atempoChain((1/p)*tempo), tail,
+		)
+	}
 
 	return []string{
-		"-y", "-i", input,
+		"-y", "-nostdin", "-hide_banner", "-loglevel", "error",
+		"-threads", "0",
+		"-i", input,
+		"-vn", "-sn", "-dn",
+		"-map_metadata", "-1",
 		"-af", filter,
+		"-c:a", "libmp3lame",
 		"-b:a", cfg.Bitrate,
+		"-compression_level", "0",
 		"-ar", strconv.Itoa(cfg.SampleRate),
 		"-ac", strconv.Itoa(cfg.Channels),
 		output,

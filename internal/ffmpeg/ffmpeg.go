@@ -8,24 +8,37 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
-func FindBinary() string {
-	return find("ffmpeg")
+var (
+	pathOnce   sync.Once
+	ffmpegBin  string
+	ffprobeBin string
+)
+
+func initPaths() {
+	pathOnce.Do(func() {
+		ffmpegBin = find("ffmpeg")
+		ffprobeBin = find("ffprobe")
+		if _, err := exec.LookPath("ffprobe"); err != nil {
+			if p := filepath.Join(filepath.Dir(ffmpegBin), "ffprobe"); fileExists(p) {
+				ffprobeBin = p
+			}
+		}
+	})
 }
 
-func Duration(ffmpegBinary, path string) (time.Duration, error) {
-	probe := find("ffprobe")
-	// If ffprobe is not in PATH, try same dir as ffmpeg
-	if _, err := exec.LookPath("ffprobe"); err != nil {
-		if p := filepath.Join(filepath.Dir(ffmpegBinary), "ffprobe"); fileExists(p) {
-			probe = p
-		}
-	}
+func FindBinary() string {
+	initPaths()
+	return ffmpegBin
+}
 
+func Duration(_ string, path string) (time.Duration, error) {
+	initPaths()
 	var buf bytes.Buffer
-	cmd := exec.Command(probe, "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", path)
+	cmd := exec.Command(ffprobeBin, "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", path)
 	cmd.Stdout = &buf
 	if err := cmd.Run(); err != nil {
 		return 0, fmt.Errorf("ffprobe: %w", err)
@@ -65,4 +78,3 @@ func searchDirs() []string {
 	}
 	return dirs
 }
-
